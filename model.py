@@ -1,7 +1,7 @@
-import torch
-from torch import nn
 import numpy as np
 import h5py
+import torch
+from torch import nn
 import torch.nn.functional as F
 from numpy.core.multiarray import _reconstruct
 torch.serialization.add_safe_globals([_reconstruct])
@@ -154,7 +154,7 @@ class EncounterRegimeClassifier:
         # Calculate zeta from eq A4 in Mardling et al. 2001
         zeta1 = eta1 * (2./(1 + e))**(alpha1 / 2.)
         zeta2 = eta2 * (2./(1 + e))**(alpha2 / 2.)
-
+        
         # Determine which polytrope index to use
         # For M < 0.8 Msun stars, we'll use n = 1.5
         # For M > 0.8 Msun stars, we'll use n = 3
@@ -169,18 +169,25 @@ class EncounterRegimeClassifier:
         # In the case of a star with 0.4 Msun < M < 0.8 Msun, we will also compute n=3 tidal dissipation, since 
         # for those masses the star has both a radiative core and a convective envelope. 
         if M1 >= 0.4 and M1 <= 0.8: 
-            # E1 here is the n = 1.5 approx
+            # E_1 here is the n = 1.5 approx
             n1 = 3 
             E_1_n3 =(G * M2**2. / R1) * ((R1/rp)**6. * self.T2(zeta1, n1) + (R1/rp)**8. * self.T3(zeta1, n1))
             E_1_interp = (E_1_n3 * (M1 - 0.4) + E_1 * (0.8 - M1)) / 0.4
             E_1 = E_1_interp
             
         if M2 >= 0.4 and M2 <= 0.8:
-            # E2 here is the n = 1.5 approx 
+            # E_2 here is the n = 1.5 approx 
             n2 = 3 
             E_2_n3 =(G * M1**2. / R2) * ((R2/rp)**6. * self.T2(zeta2, n2) + (R2/rp)**8. * self.T3(zeta2, n2))
             E_2_interp = (E_2_n3 * (M2 - 0.4) + E_2 * (0.8 - M2)) / 0.4
             E_2 = E_2_interp
+
+        # The fits from Portegies Zwart et al. 1993 can only be used for eta <= 10
+        if eta1 > 10.:
+            E_1 = 0.
+
+        if eta1 > 10.:
+            E_2 = 0.
 
         E_tidal = E_1 + E_2 # Msun * km^2/ s^2
 
@@ -196,7 +203,11 @@ class EncounterRegimeClassifier:
             # n=1.5 polytrope coefficients for T2 and T3 (PZM fits)
             A2 =  -0.397; B2 = 1.678; C2 = 1.277; D2 = -12.42; E2 = 9.446; F2 = -5.550
 
-        T2 = max(10**(A2 + B2*x + C2*x**2 + D2*x**3 + E2*x**4 + F2*x**5), 1e-5)
+        # Clip to avoid numerical overflows 
+        poly = A2 + B2*x + C2*x**2 + D2*x**3 + E2*x**4 + F2*x**5
+        poly = np.clip(poly, -100, 100)
+
+        T2 = max(10**(poly), 1e-5)
 
         return T2
 
@@ -210,11 +221,16 @@ class EncounterRegimeClassifier:
             # n=1.5 polytrope coefficients for T2 and T3 (PZM fits)
             A3 =  -0.909; B3 = 1.574; C3 = 12.37; D3 = -57.40; E3 = 80.10; F3 = -46.43
 
-        T3 = max(10**(A3 + B3*x + C3*x**2 + D3*x**3 + E3*x**4 + F3*x**5), 1e-5)
+        # Clip to avoid numerical overflows 
+        poly = A3 + B3*x + C3*x**2 + D3*x**3 + E3*x**4 + F3*x**5
+        poly = np.clip(poly, -100, 100)
+        
+        T3 = max(10**(poly), 1e-5)
 
         return T3
 
 class PerformCollision(nn.Module):
+
     _models_loaded = False 
     _classification_model = None
     _regression_model = None
@@ -261,10 +277,6 @@ class PerformCollision(nn.Module):
         # Transform and normalize the input data
         X = self.Transform(age, pericenter, velocity_inf, mass1, mass2)
         self.X_norm = self.Standard_Scale(X, self.input_mean, self.input_std)
-    
-        # Load model weights during initialization
-        self.classification_model.load_state_dict(classification_checkpoint["model_state_dict"])
-        self.regression_model.load_state_dict(regression_checkpoint["model_state_dict"])
 
         # Save total initial mass in Msun 
         self.m_ini_tot = mass1 + mass2
@@ -294,6 +306,7 @@ class PerformCollision(nn.Module):
             regression_pred  = self.regression_model(self.X_norm)
             predicted_values = regression_pred.squeeze(0).tolist()  # Converts tensor to a list
             predicted_values = [val * self.m_ini_tot for val in predicted_values] 
+            predicted_values = [float(val) for val in predicted_values]
         return predicted_values
 
 def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
@@ -339,6 +352,11 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
         pericenter = pericenters[i]
         velocity_inf = velocities_inf[i]
         
+        flag = False
+        if mass1 < mass2:
+            mass1, mass2 = mass2, mass1
+            flag = True 
+
         # Classify encounter
         # Classify encounter
         regime = classifier.classify_encounter(
@@ -346,6 +364,7 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
             pericenter=pericenter, velocity_inf=velocity_inf)
 
         if regime == 'collision':
+
             regime_flag = -1
             collision = PerformCollision(age, pericenter, velocity_inf, mass1, mass2) 
             predicted_class = collision.PerformClassification()
@@ -364,10 +383,13 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
             predicted_class = 2
             predicted_values = [mass1, mass2, 0]
 
+        if flag == True and int(predicted_class) != 1:
+            predicted_values[0], predicted_values[1] = predicted_values[1], predicted_values[0]
+
         results.append({
         'regime_flag': regime_flag,
-        'predicted_class': predicted_class,
-        'predicted_values': predicted_values})
+        'predicted_class': int(predicted_class),
+        'predicted_values': [float(v) for v in predicted_values]})
     
     return results
 

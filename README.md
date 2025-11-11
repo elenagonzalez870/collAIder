@@ -22,9 +22,9 @@ pip install torch numpy h5py
 
 ### Required Files
 
-- `examples/sample_classmodel.pt` - Classification model weights
-- `examples/sample_regmodel.pt` - Regression model weights  
-- POSYDON v2 stellar evolution grid (for radius estimation)
+- `classmodel.pt` - Classification model weights
+- `regmodel.pt` - Regression model weights  
+- `1e-02_Zsun.h5` - Posydon's Single Star MESA Models
 
 ## Quick Start
 
@@ -72,11 +72,11 @@ Each result is a dictionary containing:
 
 ### ⚠️ Stellar Evolution
 - **Main Sequence Only**: Stars must be on the main sequence (MS). Post-TAMS (Terminal Age Main Sequence) stars will raise a `ValueError`
-- **Metallicity**: Model uses POSYDON v2 MESA tracks at Z = 0.01 Z☉ (solar metallicity)
+- **Metallicity**: Model uses tracks at Z = 0.01 Z☉ (solar metallicity)
 - Stellar radii are interpolated from POSYDON grids based on age and mass
 
 ### ⚠️ Mass Range
-- Validated for masses between ~0.3 - 10 M☉
+- Validated for masses between ~0.1 - 100 M☉
 - Extrapolation outside this range may be unreliable
 
 ### ⚠️ Tidal Dissipation Physics
@@ -85,21 +85,11 @@ Uses polytrope approximations from Portegies Zwart & McMillan (1993) and Mardlin
 - **n = 3.0** for M > 0.8 M☉ (radiative envelopes)
 - **Linear interpolation** for 0.4 < M < 0.8 M☉ (mixed structure)
 
-### ⚠️ Neural Network Predictions
-- For collision regime, neural networks predict mass distribution into 3 components
-- Accuracy depends on similarity to training distribution
-- Models trained on SPH simulation outputs
-
 ### ⚠️ Simplified Regime Assumptions
 - **Tidal Capture**: Assumes perfect merger with no mass loss
 - **Flyby**: Assumes no mass transfer or interaction
-- **All regimes**: No stellar rotation, magnetic fields, or binary companions considered
+- **All regimes**: No stellar rotation or stellar winds considered
 
-## Performance
-
-- Models load once on first instantiation (~2-3 seconds)
-- Subsequent calls are significantly faster
-- Batch processing recommended for large parameter studies
 
 ## Example Use Cases
 
