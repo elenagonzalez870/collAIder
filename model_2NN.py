@@ -232,7 +232,7 @@ class EncounterRegimeClassifier:
 class PerformCollision(nn.Module):
 
     _models_loaded = False 
-    _model = None
+    _classification_model = None
     _regression_model = None
     _input_mean = None
     _input_std = None
@@ -241,27 +241,36 @@ class PerformCollision(nn.Module):
         super(PerformCollision, self).__init__() 
 
         if not PerformCollision._models_loaded:
-            PerformCollision._model = TaskSpecificMoE()
+            PerformCollision._classification_model = ClassificationNeuralNetwork()
+            PerformCollision._regression_model = RegressionNeuralNetwork()
 
             # Load the saved checkpoint for the classification model
-            MoE_checkpoint = torch.load(
-                "./src/MoE_best_model.pt",  # replace with your file path
+            classification_checkpoint = torch.load(
+                "examples/sample_classmodel.pt",  # replace with your file path
                 map_location=torch.device("cpu"), # load on CPU for demonstration
                 weights_only=False)  
 
+            regression_checkpoint = torch.load(
+                "examples/sample_regmodel.pt",
+                map_location=torch.device("cpu"), 
+                weights_only=False)
+
             # Load normalization statistics
-            PerformCollision._input_mean  = MoE_checkpoint["train_mean"]
-            PerformCollision._input_std  = MoE_checkpoint["train_std"]
+            PerformCollision._input_mean  = classification_checkpoint["train_mean"]
+            PerformCollision._input_std  = classification_checkpoint["train_std"]
 
             # Load model weights**
-            PerformCollision._model.load_state_dict(MoE_checkpoint["model_state_dict"])
+            PerformCollision._classification_model.load_state_dict(classification_checkpoint["model_state_dict"])
+            PerformCollision._regression_model.load_state_dict(regression_checkpoint["model_state_dict"])
 
             # Set models to evaluation mode**
-            PerformCollision._model.eval()
+            PerformCollision._classification_model.eval()
+            PerformCollision._regression_model.eval()
             
-            PerformCollision.models_loaded = True
+            PerformCollision._models_loaded = True
 
-        self.model = PerformCollision._model
+        self.classification_model = PerformCollision._classification_model
+        self.regression_model = PerformCollision._regression_model
         self.input_mean = PerformCollision._input_mean
         self.input_std = PerformCollision._input_std
 
@@ -275,8 +284,8 @@ class PerformCollision(nn.Module):
     def Transform(self, age, pericenter, velocity_inf, mass1, mass2):
         X = np.array([
             np.log10(age + 0.001),
-            np.log10(pericenter + 0.1),
-            np.log10(velocity_inf + 10.),
+            np.log10(pericenter + 1.),
+            np.log10(velocity_inf),
             np.log(mass1),
             np.log(mass2)], dtype=np.float32)
         return X
@@ -286,16 +295,19 @@ class PerformCollision(nn.Module):
         X_norm = torch.tensor(X_norm, dtype=torch.float32).unsqueeze(0)
         return X_norm
 
-    def PerformClassification_and_Regression(self):
+    def PerformClassification(self):
         with torch.no_grad():
-            classification_pred, regression_pred = self.model(self.X_norm)
+            classification_pred = self.classification_model(self.X_norm)
             predicted_class = torch.argmax(classification_pred, dim=1).item()
+        return predicted_class
 
+    def PerformRegression(self):
+        with torch.no_grad():
+            regression_pred  = self.regression_model(self.X_norm)
             predicted_values = regression_pred.squeeze(0).tolist()  # Converts tensor to a list
             predicted_values = [val * self.m_ini_tot for val in predicted_values] 
             predicted_values = [float(val) for val in predicted_values]
-
-        return predicted_class, predicted_values
+        return predicted_values
 
 def process_collisions(pred_class, pred_reg): 
     """
@@ -367,7 +379,8 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
 
             regime_flag = -1
             collision = PerformCollision(age, pericenter, velocity_inf, mass1, mass2) 
-            predicted_class, predicted_values = collision.PerformClassification_and_Regression()
+            predicted_class = collision.PerformClassification()
+            predicted_values = collision.PerformRegression() 
 
             # Pre-process the outputs before returning to user to enforce consistency between classification and regression predictions
             predicted_class, predicted_values = process_collisions(predicted_class, predicted_values)
@@ -394,76 +407,53 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
     
     return results
 
-class Expert(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
-        super().__init__()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.ReLU(),
-        )
-    
-    def forward(self, x):
-        return self.linear_relu_stack(x)
 
-class TaskSpecificMoE(nn.Module):
-    """Separate MoE for classification and regression tasks"""
-    def __init__(self, num_experts=4):
+
+class RegressionNeuralNetwork(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.num_experts = num_experts
         self.flatten = nn.Flatten()
-        
-        # Shared backbone
-        self.shared_backbone = nn.Sequential(
+        self.linear_relu_stack = nn.Sequential(
             nn.Linear(5, 512),
             nn.LayerNorm(512),
             nn.ReLU(),
             nn.Linear(512, 256),
             nn.LayerNorm(256),
             nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Linear(128, 3),
         )
-        
-        # Classification head
-        self.class_moe = Expert(input_dim=256, hidden_dim=128,)
-        self.class_head = nn.Linear(128, 4)
-        
-        # Regression experts
-        self.reg_experts = nn.ModuleList([Expert(input_dim=256, hidden_dim=128) for _ in range(num_experts)])
-
-        # Regression heads - one per expert
-        self.reg_heads = nn.ModuleList([nn.Linear(128, 3) for _ in range(num_experts)])
 
     def forward(self, x):
         x = self.flatten(x)
-        shared_features = self.shared_backbone(x)
-        
-        # Classification 
-        class_features = self.class_moe(shared_features)
-        class_out = self.class_head(class_features)
-        
-        # Compute gate from classification logits
-        expert_indices = torch.argmax(class_out, dim=-1) 
+        logits = self.linear_relu_stack(x)
+        fractions = F.softmax(logits, dim=-1)  # Convert to probabilities
+        return fractions
 
-        # Regression - only compute output from selected expert
-        batch_size = shared_features.shape[0]
-        reg_out = torch.zeros(batch_size, self.reg_heads[0].out_features, device=shared_features.device, dtype=shared_features.dtype)
-    
-        # Process each expert's samples
-        for expert_idx in range(self.num_experts):
-            # Find which samples use this expert
-            mask = (expert_indices == expert_idx)
-            if mask.any():
-                # Only process samples assigned to this expert
-                expert_features = self.reg_experts[expert_idx](shared_features[mask])
-                expert_out = self.reg_heads[expert_idx](expert_features)
-                reg_out[mask] = expert_out
+class ClassificationNeuralNetwork(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(5, 512),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Linear(128, 4)
+        )
 
-        reg_out_fractions = F.softmax(reg_out, dim=-1)
+    def forward(self, x):
+        x = self.flatten(x)
+        logits = self.linear_relu_stack(x)
+        return logits
 
-        return class_out, reg_out_fractions
 
 if __name__ == "__main__":
     # Run example
