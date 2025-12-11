@@ -309,6 +309,19 @@ class PerformCollision(nn.Module):
             predicted_values = [float(val) for val in predicted_values]
         return predicted_values
 
+def process_collisions(pred_class, pred_reg): 
+    """
+    Process NN predictions for consistency between classification and regression
+    """
+
+    if pred_class == 0:  #if both stars are destroyed 
+        pred_reg[2] += pred_reg[0] + pred_reg[1] #re-assign masses for mass conservation 
+        pred_reg[0], pred_reg[1] = 0.0
+    if pred_class == 1 or pred_class == 3:  #if both stars are destroyed 
+        pred_reg[2] += pred_reg[1] #re-assign masses for mass conservation 
+        pred_reg[1] = 0.0
+    return pred_class, pred_reg
+
 def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
     """
     Process multiple stellar encounters.
@@ -358,7 +371,6 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
             flag = True 
 
         # Classify encounter
-        # Classify encounter
         regime = classifier.classify_encounter(
             age=age, mass1=mass1, mass2=mass2, 
             pericenter=pericenter, velocity_inf=velocity_inf)
@@ -370,6 +382,8 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
             predicted_class = collision.PerformClassification()
             predicted_values = collision.PerformRegression() 
 
+            # Pre-process the outputs before returning to user to enforce consistency between classification and regression predictions
+            predicted_class, predicted_values = process_collisions(predicted_class, predicted_values)
 
         elif regime == 'tidal_capture':
             regime_flag = -2
