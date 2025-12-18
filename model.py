@@ -5,6 +5,7 @@ from torch import nn
 import torch.nn.functional as F
 from numpy.core.multiarray import _reconstruct
 torch.serialization.add_safe_globals([_reconstruct])
+from pathlib import Path
 
 class EncounterRegimeClassifier:
     """
@@ -42,12 +43,14 @@ class EncounterRegimeClassifier:
             interp_radii = []
             interp_masses = []
             central_h1s = []
+            tams_ages = []
             for i in matches:
                 run = grid[f"run{int(i)}"]
 
                 ages = run['history1']['star_age'][:]
                 logR = run['history1']['log_R'][:]
-                
+                h1 = run['history1']['center_h1'][:]
+
                 # First: check if the star is past the TAMS 
                 age_match = np.argsort(np.abs(ages - target_age))[0]
                 central_h1s.append(run['history1']['center_h1'][age_match]) # Central hydrogen fraction at given time, if below 10^(-5) then star is past the TAMS
@@ -58,7 +61,19 @@ class EncounterRegimeClassifier:
                 r_interp = np.interp(target_age, ages, radii)
                 interp_radii.append(r_interp)
                 interp_masses.append(masses[i])
-            
+        
+
+                # Find first index where central H drops below threshold
+                tams_idx = np.where(h1 < 1e-5)[0]
+                tams_age = ages[tams_idx[0]]
+
+                if len(tams_idx) > 0:
+                    tams_age = ages[tams_idx[0]]   # first time star is past TAMS
+                else:
+                    tams_age = None
+
+                tams_ages.append(tams_age)
+
             # Now interpolate in masses:
             # Sort by increasing mass to avoid np.interp confusion
             if interp_masses[1] < interp_masses[0]:
@@ -67,8 +82,13 @@ class EncounterRegimeClassifier:
 
             radii_predictions = np.interp(target_mass, interp_masses, interp_radii)
 
-            if central_h1s[0] < 10**(-5)  and central_h1s[1] < 10**(-5):
-                raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}), we can't compute the collision.")
+            if central_h1s[0] < 10**(-5):
+                # Use the earliest TAMS age among the matched tracks
+                tams_ages = [a for a in tams_ages if a is not None]
+                earliest_tams = min(tams_ages)
+                tolerance = 0.5*10**6 # 0.5 Myr tolerance
+                if target_age >= earliest_tams + tolerance:
+                    raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}), we can't compute the collision.")
 
         return radii_predictions
 

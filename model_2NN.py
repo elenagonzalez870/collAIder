@@ -5,6 +5,7 @@ from torch import nn
 import torch.nn.functional as F
 from numpy.core.multiarray import _reconstruct
 torch.serialization.add_safe_globals([_reconstruct])
+from pathlib import Path
 
 class EncounterRegimeClassifier:
     """
@@ -42,11 +43,13 @@ class EncounterRegimeClassifier:
             interp_radii = []
             interp_masses = []
             central_h1s = []
+            tams_ages = []
             for i in matches:
                 run = grid[f"run{int(i)}"]
 
                 ages = run['history1']['star_age'][:]
                 logR = run['history1']['log_R'][:]
+                h1 = run['history1']['center_h1'][:]
                 
                 # First: check if the star is past the TAMS 
                 age_match = np.argsort(np.abs(ages - target_age))[0]
@@ -58,6 +61,18 @@ class EncounterRegimeClassifier:
                 r_interp = np.interp(target_age, ages, radii)
                 interp_radii.append(r_interp)
                 interp_masses.append(masses[i])
+
+                # Find first index where central H drops below threshold
+                tams_idx = np.where(h1 < 1e-5)[0]
+                tams_age = ages[tams_idx[0]]
+
+                if len(tams_idx) > 0:
+                    tams_age = ages[tams_idx[0]]   # first time star is past TAMS
+                else:
+                    tams_age = None
+
+                tams_ages.append(tams_age)
+
             
             # Now interpolate in masses:
             # Sort by increasing mass to avoid np.interp confusion
@@ -66,9 +81,15 @@ class EncounterRegimeClassifier:
                 interp_radii[0] , interp_radii[1]  = interp_radii[1] , interp_radii[0]
 
             radii_predictions = np.interp(target_mass, interp_masses, interp_radii)
+            
 
-            if central_h1s[0] < 10**(-5)  and central_h1s[1] < 10**(-5):
-                raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}), we can't compute the collision.")
+            if central_h1s[0] < 10**(-5):
+                # Use the earliest TAMS age among the matched tracks
+                tams_ages = [a for a in tams_ages if a is not None]
+                earliest_tams = min(tams_ages)
+                tolerance = 0.5*10**6 # 0.5 Myr tolerance
+                if target_age >= earliest_tams + tolerance:
+                    raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}), we can't compute the collision.")
 
         return radii_predictions
 
@@ -244,14 +265,16 @@ class PerformCollision(nn.Module):
             PerformCollision._classification_model = ClassificationNeuralNetwork()
             PerformCollision._regression_model = RegressionNeuralNetwork()
 
+            BASE_DIR = Path(__file__).resolve().parent
+
             # Load the saved checkpoint for the classification model
             classification_checkpoint = torch.load(
-                "examples/sample_classmodel.pt",  # replace with your file path
+                BASE_DIR / "src/best_NN_class_model.pt",  # replace with your file path
                 map_location=torch.device("cpu"), # load on CPU for demonstration
                 weights_only=False)  
 
             regression_checkpoint = torch.load(
-                "examples/sample_regmodel.pt",
+                BASE_DIR / "src/best_NN_reg_model.pt",
                 map_location=torch.device("cpu"), 
                 weights_only=False)
 
@@ -284,8 +307,8 @@ class PerformCollision(nn.Module):
     def Transform(self, age, pericenter, velocity_inf, mass1, mass2):
         X = np.array([
             np.log10(age + 0.001),
-            np.log10(pericenter + 1.),
-            np.log10(velocity_inf),
+            np.log10(pericenter + 0.1),
+            np.log10(velocity_inf + 10.),
             np.log(mass1),
             np.log(mass2)], dtype=np.float32)
         return X
@@ -316,7 +339,7 @@ def process_collisions(pred_class, pred_reg):
 
     if pred_class == 0:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[0] + pred_reg[1] #re-assign masses for mass conservation 
-        pred_reg[0], pred_reg[1] = 0.0
+        pred_reg[0], pred_reg[1] = 0.0, 0.0
     if pred_class == 1 or pred_class == 3:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[1] #re-assign masses for mass conservation 
         pred_reg[1] = 0.0
