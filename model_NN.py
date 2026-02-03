@@ -87,9 +87,9 @@ class EncounterRegimeClassifier:
                 # Use the earliest TAMS age among the matched tracks
                 tams_ages = [a for a in tams_ages if a is not None]
                 earliest_tams = min(tams_ages)
-                tolerance = 0.5*10**6 # 0.5 Myr tolerance
-                if target_age >= earliest_tams + tolerance:
-                    raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}), we can't compute the collision.")
+                tolerance = np.abs(target_age - earliest_tams)/earliest_tams  # 10 % relative tolerance
+                if tolerance > 0.10:
+                    raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}) and approx TAMS age {earliest_tams/10**(9)}, we can't compute the collision.")
 
         return radii_predictions
 
@@ -399,7 +399,6 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
             pericenter=pericenter, velocity_inf=velocity_inf)
 
         if regime == 'collision':
-
             regime_flag = -1
             collision = PerformCollision(age, pericenter, velocity_inf, mass1, mass2) 
             predicted_class = collision.PerformClassification()
