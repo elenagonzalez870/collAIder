@@ -34,9 +34,9 @@ Each result is a dictionary containing:
 
 ## Tutorial
 
-See `./examples/Tutorial.ipynb` for detailed examples and workflow demonstrations.
-See `./examples/NN_tutorial.ipynb` for detailed example on how to use the NNs independently.
-See `./examples/MoE_tutorial.ipynb` for detailed examples on how to use the MoE independently.
+- See `./examples/Tutorial.ipynb` for detailed examples and workflow demonstrations.
+- See `./examples/NN_tutorial.ipynb` for detailed example on how to use the NNs independently.
+- See `./examples/MoE_tutorial.ipynb` for detailed examples on how to use the MoE independently.
 
 ## Key Assumptions & Caveats
 
