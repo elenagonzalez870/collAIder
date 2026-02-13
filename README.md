@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="collAIder_logo.png" width="400">
+  <img src="./docs/collAIder_logo.png" width="400">
 </p>
 
 A machine learning-based tool for predicting outcomes of stellar encounters using neural networks trained on SPH (Smoothed Particle Hydrodynamics) simulations.
