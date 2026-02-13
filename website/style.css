@@ -1,0 +1,65 @@
+body {
+    margin: 0;
+    font-family: 'JetBrains Mono', monospace;
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background-color: #1e293b;
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.nav-links a {
+    margin-left: 20px;
+    text-decoration: none;
+    color: #94a3b8;
+}
+
+.nav-links a:hover {
+    color: #38bdf8;
+}
+
+.hero {
+    text-align: center;
+    padding: 100px 20px 60px 20px;
+}
+
+.hero h1 {
+    font-size: 40px;
+    margin-bottom: 20px;
+}
+
+.hero p {
+    max-width: 600px;
+    margin: auto;
+    font-size: 18px;
+    color: #94a3b8;
+}
+
+.content {
+    max-width: 800px;
+    margin: auto;
+    padding: 40px 20px;
+}
+
+.demo-placeholder {
+    background-color: #1e293b;
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+footer {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+}
