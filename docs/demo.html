@@ -1,142 +1,751 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>collAIder - Demo</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>collAIder - Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- MathJax for LaTeX labels -->
+  <script>
+    window.MathJax = {
+      tex: { 
+        inlineMath: [['$','$'], ['\\(','\\)']],
+        displayMath: [['$$','$$'], ['\\[','\\]']]
+      },
+      svg: { 
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    .controls-panel {
+      background: rgba(37, 40, 54, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .control-group {
+      margin-bottom: 1.5rem;
+    }
+    .control-group label {
+      display: block;
+      color: #ffffff;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .control-group select,
+    .control-group input {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+    .toggle-btn {
+      padding: 0.5rem 1rem;
+      background: var(--bg-secondary);
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+    }
+    .toggle-btn.active {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+    .toggle-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    #plotly-chart {
+      width: 100%;
+      height: 700px;
+      background: rgba(37, 40, 54, 0.5);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo-section">
-                <img src="collAIder_logo.png" alt="collAIder Logo" class="logo">
-                <h1 class="site-title">collAIder</h1>
+  <header>
+    <div class="header-content">
+      <div class="logo-section">
+        <span class="site-name">collAIder</span>
+      </div>
+      <nav>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="demo.html" class="active">Demo</a></li>
+          <li><a href="team.html">Team</a></li>
+          <li><a href="funding.html">Funding</a></li>
+          <li><a href="publications.html">Publications</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" style="padding: 2rem 0 3rem;">
+      <h1>Interactive Demo</h1>
+      <p class="tagline">Explore stellar collision data in 5D parameter space</p>
+    </section>
+
+    <section>
+      <div id="loadingMessage" style="text-align: center; padding: 3rem; color: #ffffff;">
+        <p style="font-size: 1.2rem;">Loading collision data...</p>
+      </div>
+
+      <div class="controls-panel" id="controlsPanel" style="display: none;">
+        <h3 style="color: #ffffff; margin-bottom: 1.5rem;">Visualization Controls</h3>
+
+        <div class="controls-grid">
+          <div class="control-group">
+            <label>Plot Type</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active" id="btn2D">2D</button>
+              <button class="toggle-btn" id="btn3D">3D</button>
             </div>
-            <nav>
-                <ul>
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="demo.html" class="active">Demo</a></li>
-                    <li><a href="team.html">Team</a></li>
-                    <li><a href="funding.html">Funding</a></li>
-                    <li><a href="publications.html">Publications</a></li>
-                </ul>
-            </nav>
+          </div>
+
+          <div class="control-group">
+            <label for="xAxis">X-Axis</label>
+            <select id="xAxis"></select>
+          </div>
+
+          <div class="control-group">
+            <label for="yAxis">Y-Axis</label>
+            <select id="yAxis"></select>
+          </div>
+
+          <div class="control-group" id="zAxisGroup" style="display: none;">
+            <label for="zAxis">Z-Axis</label>
+            <select id="zAxis"></select>
+          </div>
+
+          <div class="control-group">
+            <label for="colorBy">Color By</label>
+            <select id="colorBy">
+              <option value="Label">Label</option>
+              <option value="Mass1f">Mass 1 Final [Msun]</option>
+              <option value="Mass2f">Mass 2 Final [Msun]</option>
+              <option value="Sigma">Sigma</option>
+            </select>
+          </div>
         </div>
-    </header>
 
-    <main>
-        <section class="hero">
-            <h1>Interactive Demo</h1>
-            <p class="tagline">Experience collAIder in action</p>
-        </section>
+        <div style="margin-top: 1.5rem;">
+          <h4 style="color: #ffffff; margin-bottom: 1rem;">Axis Scaling</h4>
+          <div class="controls-grid">
+            <div class="control-group">
+              <label>X-Axis Scale</label>
+              <div class="toggle-group">
+                <button class="toggle-btn active" id="xScaleLinear">Linear</button>
+                <button class="toggle-btn" id="xScaleLog">Log</button>
+              </div>
+            </div>
 
-        <section class="section">
-            <div class="section-header">
-                <h2>Live Demonstration</h2>
-                <p>See how collAIder works in real-time</p>
+            <div class="control-group">
+              <label>Y-Axis Scale</label>
+              <div class="toggle-group">
+                <button class="toggle-btn active" id="yScaleLinear">Linear</button>
+                <button class="toggle-btn" id="yScaleLog">Log</button>
+              </div>
             </div>
-            
-            <div class="card">
-                <h3>Demo Content</h3>
-                <p>This section will feature an interactive demonstration of the collAIder system. Content can include:</p>
-                <ul style="color: var(--text-secondary); margin-top: 1rem; line-height: 2;">
-                    <li>Interactive visualizations of the algorithm in action</li>
-                    <li>Video demonstrations of key features</li>
-                    <li>Code examples and snippets</li>
-                    <li>Live API playground</li>
-                    <li>Performance benchmarks and comparisons</li>
-                </ul>
-                <div style="margin-top: 2rem; padding: 3rem; background: var(--bg-tertiary); border-radius: 8px; text-align: center;">
-                    <p style="color: var(--accent); font-size: 1.2rem;">Demo placeholder</p>
-                    <p style="margin-top: 1rem;">Interactive content will be added here</p>
-                </div>
-            </div>
-        </section>
 
-        <section class="section">
-            <div class="section-header">
-                <h2>Use Cases</h2>
-                <p>Real-world applications of collAIder</p>
+            <div class="control-group" id="zScaleGroup" style="display: none;">
+              <label>Z-Axis Scale</label>
+              <div class="toggle-group">
+                <button class="toggle-btn active" id="zScaleLinear">Linear</button>
+                <button class="toggle-btn" id="zScaleLog">Log</button>
+              </div>
             </div>
-            
-            <div class="card-grid">
-                <div class="card">
-                    <h3>Use Case 1</h3>
-                    <p>Description of the first practical application and how collAIder addresses specific challenges in this domain.</p>
-                </div>
-                
-                <div class="card">
-                    <h3>Use Case 2</h3>
-                    <p>Description of the second practical application, highlighting unique features and performance advantages.</p>
-                </div>
-                
-                <div class="card">
-                    <h3>Use Case 3</h3>
-                    <p>Description of the third practical application, demonstrating versatility and scalability of the approach.</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="section">
-            <div class="section-header">
-                <h2>Getting Started</h2>
-                <p>Quick guide to using collAIder</p>
-            </div>
-            
-            <div class="card">
-                <h3>Installation & Setup</h3>
-                <p>Step-by-step instructions for setting up collAIder in your environment:</p>
-                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem; border-left: 3px solid var(--accent);">
-                    <code style="color: var(--accent); font-family: 'Courier New', monospace;">
-                        # Clone the repository<br>
-                        git clone https://github.com/elenagonzalez870/collAIder.git<br><br>
-                        # Install dependencies<br>
-                        pip install -r requirements.txt<br><br>
-                        # Run the demo<br>
-                        python demo.py
-                    </code>
-                </div>
-            </div>
-        </section>
-
-        <section class="section">
-            <div class="card" style="text-align: center;">
-                <h3>Want to Try It Out?</h3>
-                <p>Access the full codebase and documentation on GitHub</p>
-                <div style="margin-top: 2rem;">
-                    <a href="https://github.com/elenagonzalez870/collAIder" class="btn" target="_blank">View Repository</a>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>collAIder</h3>
-                <p>Advancing artificial intelligence through innovative research and collaboration.</p>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Quick Links</h3>
-                <a href="index.html">Home</a>
-                <a href="demo.html">Demo</a>
-                <a href="team.html">Team</a>
-                <a href="funding.html">Funding</a>
-                <a href="publications.html">Publications</a>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Connect</h3>
-                <a href="https://github.com/elenagonzalez870/collAIder" target="_blank">GitHub</a>
-                <a href="#">Contact Us</a>
-            </div>
+          </div>
         </div>
+
+        <div style="margin-top: 2rem;">
+          <h4 style="color: #ffffff; margin-bottom: 1rem;">Filter Parameters</h4>
+          <div id="sliders"></div>
+
+          <div style="margin-top: 1.5rem; text-align: center;">
+            <button class="btn" onclick="applyFilters(); updatePlot();">Update Plot</button>
+            <button class="btn btn-secondary" onclick="resetFilters()" style="margin-left: 1rem;">Reset Filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="plotly-chart"></div>
+      <div id="dataInfo" style="margin-top: 1rem; color: var(--text-secondary); text-align: center;"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>collAIder</h3>
+        <p>Advancing artificial intelligence through innovative research and collaboration.</p>
+      </div>
+      <div class="footer-section">
+        <h3>Quick Links</h3>
+        <a href="index.html">Home</a>
+        <a href="demo.html">Demo</a>
+        <a href="team.html">Team</a>
+        <a href="funding.html">Funding</a>
+        <a href="publications.html">Publications</a>
+      </div>
+      <div class="footer-section">
+        <h3>Connect</h3>
+        <a href="https://github.com/elenagonzalez870/collAIder" target="_blank">GitHub</a>
+        <a href="/cdn-cgi/l/email-protection#0e6d61607a6f6d7a4e6b766f637e626b206d6163">Contact Us</a>
+      </div>
+    </div>
+    <div class="copyright">
+      <p>&copy; 2026 collAIder Project. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    let rawData = null;
+    let filteredData = null;
+    let is3D = false;
+
+    let xScale = 'linear';
+    let yScale = 'linear';
+    let zScale = 'linear';
+
+    const inputDimensions = [
+      { key: 'Age',    label: 'Age [Gyr]' },
+      { key: 'Rp',     label: 'Rp [Rsun]' },
+      { key: 'Vinf',   label: 'Vinf [km/s]' },
+      { key: 'Mass1i', label: 'Mass 1 [Msun]' },
+      { key: 'Mass2i', label: 'Mass 2 [Msun]' }
+    ];
+
+
+    const axisLabelLatex = {
+      Age: 'Age [Gyr]',
+      Rp: '$Rp [Rsun]$',
+      Vinf: 'Vinf [km/s]',
+      Mass1i: 'Mass 1 [Msun]$',
+      Mass2i: 'Mass 2 [Msun]'
+    };
+
+    const columnMapping = {
+            'Met': '0:Met[Zsun]',
+            'Age': '1:Age[Gyr]',
+            'Rp': '2:Rp[Rsun]',
+            'Vinf': '3:Vinf[km/s]',
+            'Mass1i': '4:Mass1_i[MSUN]',
+            'Mass2i': '5:Mass2_i[Msun]',
+            'Mass1_i': '4:Mass1_i[MSUN]',
+            'Mass2_i': '5:Mass2_i[Msun]',
+            'R1': '6:R1[Rsun]',
+            'R2': '7:R2[Rsun]',
+            'Label': '8:Label',
+            'Mass1f': '9:Mass1_f[MSUN]',
+            'Mass2f': '10:Mass2_f[MSUN]',
+            'Mass1_f': '9:Mass1_f[MSUN]',
+            'Mass2_f': '10:Mass2_f[MSUN]',
+            'Sigma': '11:Sigma'
+        };
+
+    const filterOrder = ['Age', 'Rp', 'Vinf', 'Mass1i', 'Mass2i'];
+
+    window.addEventListener('DOMContentLoaded', function () {
+      loadCSVData();
+    });
+
+    function loadCSVData() {
+      const csvFileName = 'collision_data.csv';
+      fetch(csvFileName)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('CSV file not found. Make sure ' + csvFileName + ' is in the same directory as demo.html');
+          }
+          return response.text();
+        })
+        .then(csvText => {
+          Papa.parse(csvText, {
+            header: true,
+            dynamicTyping: true,
+            complete: function (results) {
+              rawData = results.data.filter(row =>
+                Object.values(row).some(val => val !== null && val !== undefined && val !== '')
+              );
+              if (rawData.length === 0) {
+                document.getElementById('loadingMessage').innerHTML =
+                  '<p style="color: #ff6b6b;">Error: No valid data found in CSV file</p>';
+                return;
+              }
+
+              document.getElementById('loadingMessage').style.display = 'none';
+              document.getElementById('controlsPanel').style.display = 'block';
+
+              initializeControls();
+              createSliders();
+              applyFilters();
+              updatePlot();
+              document.getElementById('dataInfo').textContent =
+                'Loaded ' + rawData.length.toLocaleString() + ' collision simulations';
+            },
+            error: function (error) {
+              document.getElementById('loadingMessage').innerHTML =
+                '<p style="color: #ff6b6b;">Error parsing CSV: ' + error.message + '</p>';
+            }
+          });
+        })
+        .catch(error => {
+          document.getElementById('loadingMessage').innerHTML =
+            '<p style="color: #ff6b6b;">Error loading data: ' + error.message + '</p>' +
+            '<p style="color: var(--text-secondary); margin-top: 1rem; font-size: 0.9rem;">' +
+            'Please ensure your CSV file is named collisiondata.csv and placed in the same directory as demo.html' +
+            '</p>';
+        });
+    }
+
+    function initializeControls() {
+      const xAxis = document.getElementById('xAxis');
+      const yAxis = document.getElementById('yAxis');
+      const zAxis = document.getElementById('zAxis');
+
+      xAxis.innerHTML = '';
+      yAxis.innerHTML = '';
+      zAxis.innerHTML = '';
+
+      inputDimensions.forEach(dim => {
+        xAxis.add(new Option(dim.label, dim.key));
+        yAxis.add(new Option(dim.label, dim.key));
+        zAxis.add(new Option(dim.label, dim.key));
+      });
+
+      // Set default axes: Rp for x-axis, Vinf for y-axis
+      xAxis.value = 'Rp';
+      yAxis.value = 'Vinf';
+      zAxis.selectedIndex = 0;
+
+      document.getElementById('btn2D').addEventListener('click', function () {
+        is3D = false;
+        this.classList.add('active');
+        document.getElementById('btn3D').classList.remove('active');
+        document.getElementById('zAxisGroup').style.display = 'none';
+        document.getElementById('zScaleGroup').style.display = 'none';
+        refreshFiltersForAxes();
+        updatePlot();
+      });
+
+      document.getElementById('btn3D').addEventListener('click', function () {
+        is3D = true;
+        this.classList.add('active');
+        document.getElementById('btn2D').classList.remove('active');
+        document.getElementById('zAxisGroup').style.display = 'block';
+        document.getElementById('zScaleGroup').style.display = 'block';
+        refreshFiltersForAxes();
+        updatePlot();
+      });
+
+      document.getElementById('xScaleLinear').addEventListener('click', function () {
+        xScale = 'linear';
+        this.classList.add('active');
+        document.getElementById('xScaleLog').classList.remove('active');
+        updatePlot();
+      });
+      document.getElementById('xScaleLog').addEventListener('click', function () {
+        xScale = 'log';
+        this.classList.add('active');
+        document.getElementById('xScaleLinear').classList.remove('active');
+        updatePlot();
+      });
+
+      document.getElementById('yScaleLinear').addEventListener('click', function () {
+        yScale = 'linear';
+        this.classList.add('active');
+        document.getElementById('yScaleLog').classList.remove('active');
+        updatePlot();
+      });
+      document.getElementById('yScaleLog').addEventListener('click', function () {
+        yScale = 'log';
+        this.classList.add('active');
+        document.getElementById('yScaleLinear').classList.remove('active');
+        updatePlot();
+      });
+
+      document.getElementById('zScaleLinear').addEventListener('click', function () {
+        zScale = 'linear';
+        this.classList.add('active');
+        document.getElementById('zScaleLog').classList.remove('active');
+        updatePlot();
+      });
+      document.getElementById('zScaleLog').addEventListener('click', function () {
+        zScale = 'log';
+        this.classList.add('active');
+        document.getElementById('zScaleLinear').classList.remove('active');
+        updatePlot();
+      });
+
+      document.getElementById('xAxis').addEventListener('change', () => {
+        refreshFiltersForAxes();
+        updatePlot();
+      });
+      document.getElementById('yAxis').addEventListener('change', () => {
+        refreshFiltersForAxes();
+        updatePlot();
+      });
+      document.getElementById('zAxis').addEventListener('change', () => {
+        refreshFiltersForAxes();
+        updatePlot();
+      });
+    }
+
+    function getColumnData(key, data) {
+      const colName = columnMapping[key];
+      if (!data || !colName) return [];
+      if (data.length === 0 || !(colName in data[0])) return [];
+      return data.map(row => row[colName]).filter(v => v !== null && v !== undefined);
+    }
+
+    function createSliders() {
+      const slidersDiv = document.getElementById('sliders');
+      slidersDiv.innerHTML = '<div class="controls-grid" id="parameterDropdowns"></div>';
+      const dropdownsDiv = document.getElementById('parameterDropdowns');
+
+      inputDimensions.forEach(dim => {
+        const dropdownHTML = `
+          <div class="control-group" id="group${dim.key}">
+            <label>${dim.label}</label>
+            <select id="dropdown${dim.key}">
+              <option value="">All</option>
+            </select>
+          </div>
+        `;
+        dropdownsDiv.insertAdjacentHTML('beforeend', dropdownHTML);
+      });
+
+      filterOrder.forEach(key => fillDropdownOptions(key, rawData));
+
+      // attach change listeners once
+      filterOrder.forEach(key => {
+        const dropdown = document.getElementById('dropdown' + key);
+        if (dropdown) {
+          dropdown.addEventListener('change', () => {
+            updateDependentFilters(key);
+            applyFilters();
+            updatePlot();
+          });
+        }
+      });
+
+      refreshFiltersForAxes();
+    }
+
+    function fillDropdownOptions(key, data, preserveSelection = false) {
+        const dropdown = document.getElementById('dropdown' + key);
+        if (!dropdown || !data || data.length === 0) return;
+
+        const currentValue = preserveSelection ? dropdown.value : '';
+
+        const values = getColumnData(key, data)
+            .filter(v => v !== null && !isNaN(v));
+
+        const uniqueValues = Array.from(new Set(values)).sort((a, b) => a - b);
+
+        // Format numbers with at least 3 significant figures
+        const formatValue = (v) => {
+            if (v === 0) return '0';
+            const magnitude = Math.floor(Math.log10(Math.abs(v)));
+            const decimals = Math.max(0, 2 - magnitude); // At least 3 sig figs
+            return v.toFixed(decimals);
+        };
+
+        dropdown.innerHTML =
+            '<option value="">All</option>' +
+            uniqueValues.map(v => `<option value="${v}">${formatValue(v)}</option>`).join('');
         
-        <div class="copyright">
-            <p>&copy; 2026 collAIder Project. All rights reserved.</p>
-        </div>
-    </footer>
+        // Try to restore the previous selection if it still exists
+        if (preserveSelection && currentValue !== '' && uniqueValues.includes(parseFloat(currentValue))) {
+            dropdown.value = currentValue;
+        }
+}
+
+    function updateDependentFilters(changedKey) {
+  if (!rawData) return;
+
+  let currentData = rawData.slice();
+
+  // Apply all filters up to and including changedKey
+  for (const key of filterOrder) {
+    const dropdown = document.getElementById('dropdown' + key);
+    if (!dropdown) continue;
+
+    const selected = dropdown.value;
+    const colName = columnMapping[key];
+
+    if (selected !== '') {
+      const selectedNum = parseFloat(selected);
+      currentData = currentData.filter(row => row[colName] === selectedNum);
+    }
+
+    if (key === changedKey) break;
+  }
+
+  // Now refill every *later* dropdown from this narrowed data, preserving selections where possible
+  const changedIndex = filterOrder.indexOf(changedKey);
+  for (let i = changedIndex + 1; i < filterOrder.length; i++) {
+    const laterKey = filterOrder[i];
+    fillDropdownOptions(laterKey, currentData, true);
+  }
+}
+
+
+    function applyFilters() {
+      if (!rawData) return;
+
+      filteredData = rawData.filter(row => {
+        for (let dim of inputDimensions) {
+          const colName = columnMapping[dim.key];
+          const dropdown = document.getElementById('dropdown' + dim.key);
+          if (!dropdown) continue;
+
+          const selected = dropdown.value;
+          if (selected === '') continue;
+
+          const value = row[colName];
+          const selectedNum = parseFloat(selected);
+
+          if (value !== selectedNum) return false;
+        }
+        return true;
+      });
+    }
+
+    function refreshFiltersForAxes() {
+      const xKey = document.getElementById('xAxis').value;
+      const yKey = document.getElementById('yAxis').value;
+      const zKey = is3D ? document.getElementById('zAxis').value : null;
+
+      inputDimensions.forEach(dim => {
+        const group = document.getElementById('group' + dim.key);
+        if (!group) return;
+        if (dim.key === xKey || dim.key === yKey || dim.key === zKey) {
+          group.style.display = 'none';
+        } else {
+          group.style.display = 'block';
+        }
+      });
+    }
+
+    function filterForScale(values, scaleType) {
+      if (scaleType === 'log') {
+        return values.filter(v => v > 0);
+      }
+      return values;
+    }
+
+    function updatePlot() {
+      if (!rawData) return;
+      if (!filteredData) applyFilters();
+      if (!filteredData || filteredData.length === 0) {
+        alert('No data points match the current filter criteria. Try adjusting the parameters.');
+        return;
+      }
+
+      const xKey = document.getElementById('xAxis').value;
+      const yKey = document.getElementById('yAxis').value;
+      const zKey = is3D ? document.getElementById('zAxis').value : null;
+      const colorKey = document.getElementById('colorBy').value;
+
+      const xCol = columnMapping[xKey];
+      const yCol = columnMapping[yKey];
+      const zCol = zKey ? columnMapping[zKey] : null;
+      const colorCol = columnMapping[colorKey];
+
+      let x = filteredData.map(row => row[xCol]).filter(v => v !== null && v !== undefined);
+      let y = filteredData.map(row => row[yCol]).filter(v => v !== null && v !== undefined);
+      let z = zCol ? filteredData.map(row => row[zCol]).filter(v => v !== null && v !== undefined) : null;
+
+      x = filterForScale(x, xScale);
+      y = filterForScale(y, yScale);
+      if (is3D && z) {
+        z = filterForScale(z, zScale);
+      }
+
+      let color, colorscale, ticktext, tickvals;
+      if (colorKey === 'Label') {
+        color = filteredData.map(row => {
+          const label = row[colorCol];
+          return label === -1 ? 3 : label;
+        });
+        colorscale = [
+          [0, '#1f77b4'],
+          [0.33, '#ff7f0e'],
+          [0.66, '#2ca02c'],
+          [1, '#d62728']
+        ];
+        tickvals = [0, 1, 2, 3];
+        ticktext = ['0: No stars', '1: Merger', '2: Two stars', '3: Stripped star'];
+      } else {
+        color = filteredData.map(row => row[colorCol]).filter(v => v !== null);
+        colorscale = 'Viridis';
+        tickvals = null;
+        ticktext = null;
+      }
+
+      if (x.length === 0 || y.length === 0) {
+        alert('Selected columns have no valid data (after log filtering).');
+        return;
+      }
+
+      const trace = {
+        x: x,
+        y: y,
+        mode: 'markers',
+        type: is3D ? 'scatter3d' : 'scatter',
+        marker: {
+          size: is3D ? 9 : 15,   // larger markers
+          color: color,
+          colorscale: colorscale,
+          showscale: true,
+          colorbar: {
+            title: document.getElementById('colorBy').options[
+              document.getElementById('colorBy').selectedIndex
+            ].text,
+            titlefont: { color: '#ffffff' },
+            tickfont: { color: '#b8c1ec' },
+            tickvals: tickvals,
+            ticktext: ticktext
+          },
+          opacity: 0.7,
+          cmin: colorKey === 'Label' ? 0 : undefined,
+          cmax: colorKey === 'Label' ? 3 : undefined
+        },
+        hovertemplate:
+          inputDimensions.find(d => d.key === xKey).label + ': %{x}<br>' +
+          inputDimensions.find(d => d.key === yKey).label + ': %{y}' +
+          (is3D && zKey ? '<br>' + inputDimensions.find(d => d.key === zKey).label + ': %{z}' : '') +
+          '<extra></extra>'
+      };
+
+      if (is3D && z) {
+        trace.z = z;
+      }
+
+      const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(37, 40, 54, 0.3)',
+        font: { color: '#b8c1ec' },
+        margin: { l: 60, r: 60, t: 40, b: 60 },
+        hovermode: 'closest'
+      };
+
+      if (is3D) {
+        layout.scene = {
+          xaxis: {
+            title: { text: axisLabelLatex[xKey] || xKey },
+            gridcolor: 'rgba(255,255,255,0.1)',
+            color: '#ffffff',
+            backgroundcolor: 'rgba(37, 40, 54, 0.3)',
+            type: xScale,
+            exponentformat: 'none',
+            tickformat: xScale === 'log' ? '~g' : null
+          },
+          yaxis: {
+            title: { text: axisLabelLatex[yKey] || yKey },
+            gridcolor: 'rgba(255,255,255,0.1)',
+            color: '#ffffff',
+            backgroundcolor: 'rgba(37, 40, 54, 0.3)',
+            type: yScale,
+            exponentformat: 'none',
+            tickformat: yScale === 'log' ? '~g' : null
+          },
+          zaxis: {
+            title: { text: axisLabelLatex[zKey] || zKey },
+            gridcolor: 'rgba(255,255,255,0.1)',
+            color: '#ffffff',
+            backgroundcolor: 'rgba(37, 40, 54, 0.3)',
+            type: zScale,
+            exponentformat: 'none',
+            tickformat: zScale === 'log' ? '~g' : null
+          },
+          bgcolor: 'rgba(37, 40, 54, 0.3)'
+        };
+      } else {
+        layout.xaxis = {
+          title: { text: axisLabelLatex[xKey] || xKey },
+          gridcolor: 'rgba(255,255,255,0.1)',
+          color: '#ffffff',
+          type: xScale,
+          exponentformat: 'none',
+          tickformat: xScale === 'log' ? '~g' : null
+        };
+        layout.yaxis = {
+          title: { text: axisLabelLatex[yKey] || yKey },
+          gridcolor: 'rgba(255,255,255,0.1)',
+          color: '#ffffff',
+          type: yScale,
+          exponentformat: 'none',
+          tickformat: yScale === 'log' ? '~g' : null
+        };
+      }
+
+      const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        mathjax: 'cdn'
+      };
+
+      Plotly.react('plotly-chart', [trace], layout, config);
+
+      document.getElementById('dataInfo').textContent =
+        'Showing ' +
+        filteredData.length.toLocaleString() +
+        ' of ' +
+        rawData.length.toLocaleString() +
+        ' points';
+    }
+
+    function resetFilters() {
+      // Reset all filter dropdowns to "All"
+      inputDimensions.forEach(dim => {
+        const dropdown = document.getElementById('dropdown' + dim.key);
+        if (dropdown) {
+          dropdown.value = '';
+        }
+      });
+      
+      // Refill all dropdowns with full dataset
+      filterOrder.forEach(key => fillDropdownOptions(key, rawData));
+      
+      // Reset scales to linear
+      xScale = 'linear';
+      yScale = 'linear';
+      zScale = 'linear';
+      
+      document.getElementById('xScaleLinear').classList.add('active');
+      document.getElementById('xScaleLog').classList.remove('active');
+      document.getElementById('yScaleLinear').classList.add('active');
+      document.getElementById('yScaleLog').classList.remove('active');
+      document.getElementById('zScaleLinear').classList.add('active');
+      document.getElementById('zScaleLog').classList.remove('active');
+      
+      applyFilters();
+      updatePlot();
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>collAIder - Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        .controls-panel {
+            background: rgba(37, 40, 54, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+        
+        .control-group select[multiple] {
+            height: 120px;
+        }
+        
+        .control-group select[multiple] option {
+            padding: 0.5rem;
+        }
+        
+        .control-group select[multiple] option:checked {
+            background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+            color: var(--bg-primary);
+        }
+        
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .toggle-btn.active {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+        
+        .toggle-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        #plotly-chart {
+            width: 100%;
+            height: 700px;
+            background: rgba(37, 40, 54, 0.5);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo-section">
+                <span class="site-name">collAIder</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="demo.html" class="active">Demo</a></li>
+                    <li><a href="team.html">Team</a></li>
+                    <li><a href="funding.html">Funding</a></li>
+                    <li><a href="publications.html">Publications</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero" style="padding: 2rem 0 3rem;">
+            <h1>Interactive Demo</h1>
+            <p class="tagline">Explore stellar collision data in 5D parameter space</p>
+        </section>
+
+        <section class="section">
+            <div id="loadingMessage" style="text-align: center; padding: 3rem; color: #ffffff;">
+                <p style="font-size: 1.2rem;">Loading collision data...</p>
+            </div>
+
+            <div class="controls-panel" id="controlsPanel" style="display: none;">
+                <h3 style="color: #ffffff; margin-bottom: 1.5rem;">Visualization Controls</h3>
+                
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Plot Type</label>
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" id="btn2D">2D</button>
+                            <button class="toggle-btn" id="btn3D">3D</button>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="xAxis">X-Axis</label>
+                        <select id="xAxis"></select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="yAxis">Y-Axis</label>
+                        <select id="yAxis"></select>
+                    </div>
+                    
+                    <div class="control-group" id="zAxisGroup" style="display: none;">
+                        <label for="zAxis">Z-Axis</label>
+                        <select id="zAxis"></select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="colorBy">Color By</label>
+                        <select id="colorBy">
+                            <option value="Label">Label</option>
+                            <option value="Mass1_f">Mass1_f [MSUN]</option>
+                            <option value="Mass2_f">Mass2_f [MSUN]</option>
+                            <option value="Sigma">Sigma</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="color: #ffffff; margin-bottom: 1rem;">Axis Scaling</h4>
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>X-Axis Scale</label>
+                            <div class="toggle-group">
+                                <button class="toggle-btn active" id="xScaleLinear">Linear</button>
+                                <button class="toggle-btn" id="xScaleLog">Log</button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Y-Axis Scale</label>
+                            <div class="toggle-group">
+                                <button class="toggle-btn active" id="yScaleLinear">Linear</button>
+                                <button class="toggle-btn" id="yScaleLog">Log</button>
+                            </div>
+                        </div>
+                        <div class="control-group" id="zScaleGroup" style="display: none;">
+                            <label>Z-Axis Scale</label>
+                            <div class="toggle-group">
+                                <button class="toggle-btn active" id="zScaleLinear">Linear</button>
+                                <button class="toggle-btn" id="zScaleLog">Log</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 2rem;">
+                    <h4 style="color: #ffffff; margin-bottom: 1rem;">Filter Parameters</h4>
+                    <div id="sliders"></div>
+                </div>
+                
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <button class="btn" onclick="updatePlot()">Update Plot</button>
+                    <button class="btn btn-secondary" onclick="resetFilters()" style="margin-left: 1rem;">Reset Filters</button>
+                </div>
+            </div>
+
+            <div id="plotly-chart"></div>
+            
+            <div id="dataInfo" style="margin-top: 1rem; color: var(--text-secondary); text-align: center;"></div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>collAIder</h3>
+                <p>Advancing artificial intelligence through innovative research and collaboration.</p>
+            </div>
+            
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <a href="index.html">Home</a>
+                <a href="demo.html">Demo</a>
+                <a href="team.html">Team</a>
+                <a href="funding.html">Funding</a>
+                <a href="publications.html">Publications</a>
+            </div>
+            
+            <div class="footer-section">
+                <h3>Connect</h3>
+                <a href="https://github.com/elenagonzalez870/collAIder" target="_blank">GitHub</a>
+                <a href="#">Contact Us</a>
+            </div>
+        </div>
+        
+        <div class="copyright">
+            <p>&copy; 2026 collAIder Project. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        let rawData = null;
+        let filteredData = null;
+        let is3D = false;
+        
+        const inputDimensions = [
+            { key: 'Age', label: 'Age [Gyr]' },
+            { key: 'Rp', label: 'Rp [Rsun]' },
+            { key: 'Vinf', label: 'Vinf [km/s]' },
+            { key: 'Mass1_i', label: 'Mass1_i [MSUN]' },
+            { key: 'Mass2_i', label: 'Mass2_i [Msun]' }
+        ];
+        
+        const columnMapping = {
+            'Met': '0:Met[Zsun]',
+            'Age': '1:Age[Gyr]',
+            'Rp': '2:Rp[Rsun]',
+            'Vinf': '3:Vinf[km/s]',
+            'Mass1_i': '4:Mass1_i[MSUN]',
+            'Mass2_i': '5:Mass2_i[Msun]',
+            'R1': '6:R1[Rsun]',
+            'R2': '7:R2[Rsun]',
+            'Label': '8:Label',
+            'Mass1_f': '9:Mass1_f[MSUN]',
+            'Mass2_f': '10:Mass2_f[MSUN]',
+            'Sigma': '11:Sigma'
+        };
+
+        // Load CSV file on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            loadCSVData();
+        });
+
+        function loadCSVData() {
+            // Update this filename to match your CSV file name
+            const csvFileName = 'collision_data.csv';
+            
+            console.log('Attempting to load CSV file:', csvFileName);
+            
+            fetch(csvFileName)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('CSV file not found. Make sure "' + csvFileName + '" is in the same directory as demo.html');
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    console.log('CSV loaded, parsing...');
+                    Papa.parse(csvText, {
+                        header: true,
+                        dynamicTyping: true,
+                        complete: function(results) {
+                            console.log('Parse complete. Total rows:', results.data.length);
+                            console.log('First row:', results.data[0]);
+                            console.log('Column names:', Object.keys(results.data[0] || {}));
+                            
+                            rawData = results.data.filter(row => {
+                                return Object.values(row).some(val => val !== null && val !== undefined && val !== '');
+                            });
+                            
+                            console.log('Filtered data points:', rawData.length);
+                            
+                            if (rawData.length === 0) {
+                                document.getElementById('loadingMessage').innerHTML = 
+                                    `<p style="color: #ff6b6b;">Error: No valid data found in CSV file</p>`;
+                                return;
+                            }
+                            
+                            document.getElementById('loadingMessage').style.display = 'none';
+                            document.getElementById('controlsPanel').style.display = 'block';
+                            initializeControls();
+                            updatePlot();
+                            document.getElementById('dataInfo').textContent = 
+                                `Loaded ${rawData.length.toLocaleString()} collision simulations`;
+                        },
+                        error: function(error) {
+                            console.error('Parse error:', error);
+                            document.getElementById('loadingMessage').innerHTML = 
+                                `<p style="color: #ff6b6b;">Error parsing CSV: ${error.message}</p>`;
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    document.getElementById('loadingMessage').innerHTML = 
+                        `<p style="color: #ff6b6b;">Error loading data: ${error.message}</p>
+                         <p style="color: var(--text-secondary); margin-top: 1rem; font-size: 0.9rem;">
+                         Please ensure your CSV file is named "collision_data.csv" and placed in the same directory as demo.html
+                         </p>`;
+                });
+        }
+
+        // Toggle 2D/3D
+        document.getElementById('btn2D').addEventListener('click', function() {
+            is3D = false;
+            document.getElementById('btn2D').classList.add('active');
+            document.getElementById('btn3D').classList.remove('active');
+            document.getElementById('zAxisGroup').style.display = 'none';
+            document.getElementById('zScaleGroup').style.display = 'none';
+            updatePlot();
+        });
+
+        document.getElementById('btn3D').addEventListener('click', function() {
+            is3D = true;
+            document.getElementById('btn3D').classList.add('active');
+            document.getElementById('btn2D').classList.remove('active');
+            document.getElementById('zAxisGroup').style.display = 'block';
+            document.getElementById('zScaleGroup').style.display = 'block';
+            updatePlot();
+        });
+        
+        // Axis scale toggles
+        let xScale = 'linear';
+        let yScale = 'linear';
+        let zScale = 'linear';
+        
+        document.getElementById('xScaleLinear').addEventListener('click', function() {
+            xScale = 'linear';
+            document.getElementById('xScaleLinear').classList.add('active');
+            document.getElementById('xScaleLog').classList.remove('active');
+            updatePlot();
+        });
+        
+        document.getElementById('xScaleLog').addEventListener('click', function() {
+            xScale = 'log';
+            document.getElementById('xScaleLog').classList.add('active');
+            document.getElementById('xScaleLinear').classList.remove('active');
+            updatePlot();
+        });
+        
+        document.getElementById('yScaleLinear').addEventListener('click', function() {
+            yScale = 'linear';
+            document.getElementById('yScaleLinear').classList.add('active');
+            document.getElementById('yScaleLog').classList.remove('active');
+            updatePlot();
+        });
+        
+        document.getElementById('yScaleLog').addEventListener('click', function() {
+            yScale = 'log';
+            document.getElementById('yScaleLog').classList.add('active');
+            document.getElementById('yScaleLinear').classList.remove('active');
+            updatePlot();
+        });
+        
+        document.getElementById('zScaleLinear').addEventListener('click', function() {
+            zScale = 'linear';
+            document.getElementById('zScaleLinear').classList.add('active');
+            document.getElementById('zScaleLog').classList.remove('active');
+            updatePlot();
+        });
+        
+        document.getElementById('zScaleLog').addEventListener('click', function() {
+            zScale = 'log';
+            document.getElementById('zScaleLog').classList.add('active');
+            document.getElementById('zScaleLinear').classList.remove('active');
+            updatePlot();
+        });
+
+        function initializeControls() {
+            // Populate axis selectors
+            const xAxis = document.getElementById('xAxis');
+            const yAxis = document.getElementById('yAxis');
+            const zAxis = document.getElementById('zAxis');
+            
+            xAxis.innerHTML = '';
+            yAxis.innerHTML = '';
+            zAxis.innerHTML = '';
+            
+            inputDimensions.forEach((dim, idx) => {
+                xAxis.add(new Option(dim.label, dim.key));
+                yAxis.add(new Option(dim.label, dim.key));
+                zAxis.add(new Option(dim.label, dim.key));
+            });
+            
+            xAxis.selectedIndex = 0;
+            yAxis.selectedIndex = 1;
+            zAxis.selectedIndex = 2;
+            
+            // Create sliders for all input dimensions
+            createSliders();
+        }
+
+        function createSliders() {
+            const slidersDiv = document.getElementById('sliders');
+            slidersDiv.innerHTML = '<div class="controls-grid" id="parameterDropdowns"></div>';
+            const dropdownsDiv = document.getElementById('parameterDropdowns');
+            
+            inputDimensions.forEach(dim => {
+                const col = getColumnData(dim.key);
+                if (!col || col.length === 0) {
+                    console.warn(`No data found for dimension: ${dim.key} (column: ${columnMapping[dim.key]})`);
+                    return;
+                }
+                
+                const validValues = col.filter(v => v != null && !isNaN(v));
+                if (validValues.length === 0) {
+                    console.warn(`No valid numeric data for: ${dim.key}`);
+                    return;
+                }
+                
+                // Get unique values and sort them
+                const uniqueValues = [...new Set(validValues)].sort((a, b) => a - b);
+                
+                console.log(`Creating dropdown for ${dim.key}: ${uniqueValues.length} unique values`);
+                
+                // Create dropdown HTML
+                const optionsHTML = uniqueValues.map(val => 
+                    `<option value="${val}">${val.toFixed(3)}</option>`
+                ).join('');
+                
+                const dropdownHTML = `
+                    <div class="control-group">
+                        <label>${dim.label}</label>
+                        <select id="dropdown_${dim.key}" multiple size="5" style="height: auto;">
+                            ${optionsHTML}
+                        </select>
+                        <button class="toggle-btn" style="margin-top: 0.5rem; width: 100%;" onclick="selectAll('${dim.key}')">Select All</button>
+                    </div>
+                `;
+                
+                dropdownsDiv.insertAdjacentHTML('beforeend', dropdownHTML);
+                
+                // Select all options by default
+                setTimeout(() => {
+                    const dropdown = document.getElementById(`dropdown_${dim.key}`);
+                    if (dropdown) {
+                        for (let i = 0; i < dropdown.options.length; i++) {
+                            dropdown.options[i].selected = true;
+                        }
+                    }
+                }, 0);
+            });
+        }
+        
+        function selectAll(dimKey) {
+            const dropdown = document.getElementById(`dropdown_${dimKey}`);
+            if (dropdown) {
+                for (let i = 0; i < dropdown.options.length; i++) {
+                    dropdown.options[i].selected = true;
+                }
+            }
+        }
+
+        function getColumnData(key) {
+            const colName = columnMapping[key];
+            if (!rawData || !colName) {
+                console.warn(`Cannot get column data - key: ${key}, colName: ${colName}, rawData exists: ${!!rawData}`);
+                return [];
+            }
+            
+            // Check if column exists in first row
+            if (rawData.length > 0 && !(colName in rawData[0])) {
+                console.warn(`Column "${colName}" not found in data. Available columns:`, Object.keys(rawData[0]));
+                return [];
+            }
+            
+            return rawData.map(row => row[colName]).filter(v => v != null);
+        }
+
+        function filterData() {
+            filteredData = rawData.filter(row => {
+                for (let dim of inputDimensions) {
+                    const colName = columnMapping[dim.key];
+                    const value = row[colName];
+                    
+                    // Check if dropdown exists
+                    const dropdown = document.getElementById(`dropdown_${dim.key}`);
+                    
+                    if (!dropdown) {
+                        console.warn(`Dropdown not found for ${dim.key}, skipping filter`);
+                        continue;
+                    }
+                    
+                    // Get selected values from dropdown
+                    const selectedValues = Array.from(dropdown.selectedOptions).map(opt => parseFloat(opt.value));
+                    
+                    if (selectedValues.length === 0) {
+                        // If nothing selected, skip this dimension
+                        continue;
+                    }
+                    
+                    // Check if current value is in selected values
+                    if (!selectedValues.includes(value)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        function updatePlot() {
+            if (!rawData) {
+                console.error('No data loaded');
+                return;
+            }
+            
+            try {
+                filterData();
+                
+                if (filteredData.length === 0) {
+                    alert('No data points match the current filter criteria. Try adjusting the parameters.');
+                    return;
+                }
+                
+                const xKey = document.getElementById('xAxis').value;
+                const yKey = document.getElementById('yAxis').value;
+                const zKey = is3D ? document.getElementById('zAxis').value : null;
+                const colorKey = document.getElementById('colorBy').value;
+                
+                const xCol = columnMapping[xKey];
+                const yCol = columnMapping[yKey];
+                const zCol = zKey ? columnMapping[zKey] : null;
+                const colorCol = columnMapping[colorKey];
+                
+                console.log('Plotting columns:', { xCol, yCol, zCol, colorCol });
+                
+                const x = filteredData.map(row => row[xCol]).filter(v => v != null);
+                const y = filteredData.map(row => row[yCol]).filter(v => v != null);
+                const z = zCol ? filteredData.map(row => row[zCol]).filter(v => v != null) : null;
+                
+                // Handle label color mapping
+                let color, colorscale, ticktext, tickvals;
+                if (colorKey === 'Label') {
+                    // Map -1 to 3, keep others the same
+                    color = filteredData.map(row => {
+                        const label = row[colorCol];
+                        return label === -1 ? 3 : label;
+                    });
+                    
+                    // Discrete colorscale for labels
+                    colorscale = [
+                        [0, '#1f77b4'],      // 0: No stars - blue
+                        [0.33, '#ff7f0e'],   // 1: Merger - orange
+                        [0.66, '#2ca02c'],   // 2: Two stars - green
+                        [1, '#d62728']       // 3: Stripped star - red
+                    ];
+                    
+                    tickvals = [0, 1, 2, 3];
+                    ticktext = ['No stars', 'Merger', 'Two stars', 'Stripped star'];
+                } else {
+                    color = filteredData.map(row => row[colorCol]).filter(v => v != null);
+                    colorscale = 'Viridis';
+                    tickvals = null;
+                    ticktext = null;
+                }
+                
+                console.log('Data points:', x.length, y.length, z ? z.length : 'N/A', color.length);
+                
+                if (x.length === 0 || y.length === 0) {
+                    alert('Selected columns have no valid data. Check your CSV file column names.');
+                    return;
+                }
+                
+                const trace = {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    type: is3D ? 'scatter3d' : 'scatter',
+                    marker: {
+                        size: is3D ? 3 : 5,
+                        color: color,
+                        colorscale: colorscale,
+                        showscale: true,
+                        colorbar: {
+                            title: document.getElementById('colorBy').options[document.getElementById('colorBy').selectedIndex].text,
+                            titlefont: { color: '#ffffff' },
+                            tickfont: { color: '#b8c1ec' },
+                            tickvals: tickvals,
+                            ticktext: ticktext
+                        },
+                        opacity: 0.7,
+                        cmin: colorKey === 'Label' ? 0 : undefined,
+                        cmax: colorKey === 'Label' ? 3 : undefined
+                    },
+                    hovertemplate: `${inputDimensions.find(d => d.key === xKey).label}: %{x}<br>` +
+                                  `${inputDimensions.find(d => d.key === yKey).label}: %{y}<br>` +
+                                  (is3D ? `${inputDimensions.find(d => d.key === zKey).label}: %{z}<br>` : '') +
+                                  `<extra></extra>`
+                };
+                
+                if (is3D && z) {
+                    trace.z = z;
+                }
+                
+                const layout = {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(37, 40, 54, 0.3)',
+                    font: { color: '#b8c1ec' },
+                    margin: { l: 60, r: 60, t: 40, b: 60 },
+                    hovermode: 'closest'
+                };
+                
+                if (is3D) {
+                    layout.scene = {
+                        xaxis: { 
+                            title: inputDimensions.find(d => d.key === xKey).label,
+                            gridcolor: 'rgba(255,255,255,0.1)',
+                            color: '#ffffff',
+                            backgroundcolor: 'rgba(37, 40, 54, 0.3)',
+                            type: xScale
+                        },
+                        yaxis: { 
+                            title: inputDimensions.find(d => d.key === yKey).label,
+                            gridcolor: 'rgba(255,255,255,0.1)',
+                            color: '#ffffff',
+                            backgroundcolor: 'rgba(37, 40, 54, 0.3)',
+                            type: yScale
+                        },
+                        zaxis: { 
+                            title: inputDimensions.find(d => d.key === zKey).label,
+                            gridcolor: 'rgba(255,255,255,0.1)',
+                            color: '#ffffff',
+                            backgroundcolor: 'rgba(37, 40, 54, 0.3)',
+                            type: zScale
+                        },
+                        bgcolor: 'rgba(37, 40, 54, 0.3)'
+                    };
+                } else {
+                    layout.xaxis = { 
+                        title: inputDimensions.find(d => d.key === xKey).label,
+                        gridcolor: 'rgba(255,255,255,0.1)',
+                        color: '#ffffff',
+                        type: xScale
+                    };
+                    layout.yaxis = { 
+                        title: inputDimensions.find(d => d.key === yKey).label,
+                        gridcolor: 'rgba(255,255,255,0.1)',
+                        color: '#ffffff',
+                        type: yScale
+                    };
+                }
+                
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    displaylogo: false
+                };
+                
+                Plotly.newPlot('plotly-chart', [trace], layout, config);
+                
+                document.getElementById('dataInfo').textContent = 
+                    `Showing ${filteredData.length.toLocaleString()} of ${rawData.length.toLocaleString()} points`;
+                    
+                console.log('Plot updated successfully');
+            } catch (error) {
+                console.error('Error updating plot:', error);
+                alert('Error creating plot: ' + error.message + '\n\nCheck the browser console (F12) for details.');
+            }
+        }
+
+        function resetFilters() {
+            inputDimensions.forEach(dim => {
+                const dropdown = document.getElementById(`dropdown_${dim.key}`);
+                if (dropdown) {
+                    for (let i = 0; i < dropdown.options.length; i++) {
+                        dropdown.options[i].selected = true;
+                    }
+                }
+            });
+            updatePlot();
+        }
+    </script>
+</body>
+</html>

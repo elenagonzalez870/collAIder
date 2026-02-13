@@ -4,8 +4,8 @@
     --bg-tertiary: #2d3142;
     --text-primary: #ffffff;
     --text-secondary: #b8c1ec;
-    --accent: #00d9ff;
-    --accent-glow: rgba(0, 217, 255, 0.3);
+    --accent: #a855f7;
+    --accent-glow: rgba(168, 85, 247, 0.3);
     --border: rgba(255, 255, 255, 0.1);
 }
 
@@ -27,7 +27,7 @@ body {
 
 /* Header & Navigation */
 header {
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    background: linear-gradient(to bottom, #000000 0%, #1a1d2e 100%);
     border-bottom: 1px solid var(--border);
     padding: 1.5rem 2rem;
     position: sticky;
@@ -51,25 +51,12 @@ header {
     gap: 1rem;
 }
 
-.logo {
-    height: 50px;
-    width: auto;
-    filter: drop-shadow(0 0 10px var(--accent-glow));
-    transition: transform 0.3s ease;
-}
-
-.logo:hover {
-    transform: scale(1.05);
-}
-
-.site-title {
+.site-name {
+    font-family: 'Andale Mono', 'Courier New', monospace;
     font-size: 1.8rem;
     font-weight: 700;
-    letter-spacing: 0.5px;
-    background: linear-gradient(135deg, var(--accent) 0%, #0099cc 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
+    letter-spacing: 1px;
 }
 
 nav ul {
@@ -82,37 +69,17 @@ nav a {
     color: var(--text-secondary);
     text-decoration: none;
     padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
     font-weight: 500;
-    position: relative;
-    overflow: hidden;
-}
-
-nav a::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
-    transition: left 0.5s ease;
-}
-
-nav a:hover::before {
-    left: 100%;
 }
 
 nav a:hover {
     color: var(--accent);
-    background-color: rgba(0, 217, 255, 0.1);
+    text-shadow: 0 0 8px var(--accent-glow);
 }
 
 nav a.active {
     color: var(--accent);
-    background-color: rgba(0, 217, 255, 0.15);
-    box-shadow: 0 0 20px var(--accent-glow);
 }
 
 /* Main Content */
@@ -122,6 +89,44 @@ main {
     margin: 0 auto;
     padding: 4rem 2rem;
     width: 100%;
+    position: relative;
+}
+
+.home-page main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 150%;
+    background-image: url('collAIder.png');
+    background-size: 1000px;
+    background-position: center 0rem;
+    background-repeat: no-repeat;
+    opacity: 0.70;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+main::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+    animation: pulse 4s ease-in-out infinite;
+    z-index: 0;
+}
+
+main > * {
+    position: relative;
+    z-index: 1;
 }
 
 .hero {
@@ -130,22 +135,9 @@ main {
     position: relative;
 }
 
-.hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-    pointer-events: none;
-    animation: pulse 4s ease-in-out infinite;
-}
-
 @keyframes pulse {
-    0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
-    50% { opacity: 0.6; transform: translateX(-50%) scale(1.1); }
+    0%, 100% { opacity: 0.45; transform: translateX(-50%) scale(1); }
+    50% { opacity: 0.8; transform: translateX(-50%) scale(1.1); }
 }
 
 .hero h1 {
@@ -153,8 +145,6 @@ main {
     font-weight: 800;
     margin-bottom: 1.5rem;
     letter-spacing: -1px;
-    position: relative;
-    z-index: 1;
 }
 
 .hero .tagline {
@@ -162,8 +152,6 @@ main {
     color: var(--text-secondary);
     max-width: 700px;
     margin: 0 auto 2rem;
-    position: relative;
-    z-index: 1;
 }
 
 /* Content Sections */
@@ -175,6 +163,7 @@ main {
     margin-bottom: 3rem;
     border-left: 4px solid var(--accent);
     padding-left: 2rem;
+    background: transparent;
 }
 
 .section-header h2 {
@@ -196,7 +185,8 @@ main {
 }
 
 .card {
-    background: var(--bg-secondary);
+    background: rgba(37, 40, 54, 0.7);
+    backdrop-filter: blur(10px);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 2rem;
@@ -224,7 +214,7 @@ main {
 
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 40px rgba(0, 217, 255, 0.2);
+    box-shadow: 0 10px 40px rgba(168, 85, 247, 0.2);
     border-color: var(--accent);
 }
 
@@ -248,14 +238,10 @@ main {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    background: var(--bg-tertiary);
     border: 3px solid var(--accent);
     margin: 0 auto 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 3rem;
-    color: var(--accent);
+    overflow: hidden;
+    background: var(--bg-tertiary);
 }
 
 /* Publications List */
@@ -271,7 +257,7 @@ main {
 .publication-item:hover {
     transform: translateX(10px);
     border-color: var(--accent);
-    box-shadow: -5px 0 20px rgba(0, 217, 255, 0.2);
+    box-shadow: -5px 0 20px rgba(168, 85, 247, 0.2);
 }
 
 .publication-item h3 {
@@ -294,7 +280,7 @@ main {
 .btn {
     display: inline-block;
     padding: 1rem 2rem;
-    background: linear-gradient(135deg, var(--accent) 0%, #0099cc 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
     color: var(--bg-primary);
     text-decoration: none;
     border-radius: 8px;
@@ -318,7 +304,7 @@ main {
 
 /* Footer */
 footer {
-    background: var(--bg-secondary);
+    background: linear-gradient(to bottom, #1a1d2e 0%, #000000 100%);
     border-top: 1px solid var(--border);
     padding: 3rem 2rem;
     margin-top: auto;
@@ -388,3 +374,62 @@ footer {
         padding: 2rem 1rem;
     }
 }
+
+.team-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.institution {
+    color: var(--accent);
+    margin-bottom: 1rem;
+}
+
+.read-more-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 400;
+    cursor: pointer;
+    margin: 1rem auto 0 auto;   /* centers horizontally */
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;        /* centers arrow + text */
+    
+    text-align: center;         /* centers text */
+}
+
+/* The small upside-down arrow */
+.read-more-btn::after {
+    content: "⌄";
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+}
+
+/* Rotate arrow when open */
+.bio.open + .read-more-btn::after {
+    transform: rotate(180deg);
+}
+
+.read-more-btn:hover {
+    opacity: 0.8;
+    color: var(--accent);      /* optional: turns purple on hover */
+}
+
+
+.bio {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+
+.bio.open {
+    max-height: 500px;
+    opacity: 1;
+}
+
