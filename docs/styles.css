@@ -52,9 +52,9 @@ header {
 }
 
 .site-name {
-    font-family: 'Andale Mono', 'Courier New', monospace;
+    font-family: 'Courier New', monospace;
     font-size: 1.8rem;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-primary);
     letter-spacing: 1px;
 }
