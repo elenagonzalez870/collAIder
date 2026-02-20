@@ -599,7 +599,22 @@
         tickvals = [0, 1, 2, 3];
         ticktext = ['0: No stars', '1: Merger', '2: Two stars', '3: Stripped star'];
       } else {
-        color = filteredData.map(row => row[colorCol]).filter(v => v !== null);
+        const labelCol = columnMapping['Label'];
+        const mass1fCol = columnMapping['Mass1f'];
+        const mass2fCol = columnMapping['Mass2f'];
+        color = filteredData.map(row => {
+          const label = row[labelCol];
+          const isMergerOrStripped = (label === 1 || label === -1 || label === 3);
+          if (isMergerOrStripped && (colorKey === 'Mass1f' || colorKey === 'Mass2f')) {
+            const m1 = row[mass1fCol];
+            const m2 = row[mass2fCol];
+            const nonZeroMass = (m1 !== 0 && m1 !== null) ? m1 : m2;
+            const zeroMass = 0;
+            if (colorKey === 'Mass1f') return nonZeroMass;
+            else return zeroMass;
+          }
+          return row[colorCol];
+        }).filter(v => v !== null);
         colorscale = 'Viridis';
         tickvals = null;
         ticktext = null;
