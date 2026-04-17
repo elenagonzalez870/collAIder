@@ -1,0 +1,75 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: collAIder
+abstract: >
+  A machine learning-based tool for predicting outcomes of stellar encounters
+  using neural networks trained on Smoothed Particle Hydrodynamics (SPH)
+  simulation data. collAIder classifies encounters into physical regimes
+  (collision, tidal capture, flyby) and predicts post-encounter stellar masses.
+authors:
+  - family-names: González Prieto
+    given-names: Elena
+    email: elena.prieto@northwestern.edu
+    orcid: "https://orcid.org/0000-0002-0933-6438"   # replace with actual ORCID
+    affiliation: Northwestern University
+version: "1.0.0"
+date-released: "2026-01-01"   # replace with actual release date
+license: MIT
+repository-code: "https://github.com/elenagonzalez870/collAIder"
+url: "https://elenagonzalez870.github.io/collAIder/"
+doi: 10.5281/zenodo.19601411   
+keywords:
+  - stellar encounters
+  - machine learning
+  - neural networks
+  - SPH simulations
+  - stellar collisions
+  - tidal capture
+  - astrophysics
+preferred-citation:
+  type: article
+  authors:
+    - family-names: González Prieto
+      given-names: Elena
+      orcid: "https://orcid.org/0000-0002-0933-6438"
+  title: "Machine Learning Methods for Stellar Collisions. I. Predicting Outcomes of SPH Simulations"  
+  year: 2026
+  journal: "ApJ"                
+  doi: "[paper DOI]"                        # replace after publication
+  url: "https://arxiv.org/abs/2602.10191"
+references:
+  - type: article
+    authors:
+      - family-names: Portegies Zwart
+        given-names: Simon F.
+      - family-names: McMillan
+        given-names: Stephen L. W.
+    title: "The evolution of close triple stars"
+    year: 1993
+    journal: The Astrophysical Journal
+    volume: 410
+    pages: 759
+    doi: 10.1086/172795
+  - type: article
+    authors:
+      - family-names: Mardling
+        given-names: Rosemary A.
+      - family-names: Aarseth
+        given-names: Sverre J.
+    title: "Tidal interactions in star cluster simulations"
+    year: 2001
+    journal: Monthly Notices of the Royal Astronomical Society
+    volume: 321
+    pages: 398
+    doi: 10.1046/j.1365-8711.2001.03974.x
+  - type: article
+    authors:
+      - family-names: Fragos
+        given-names: Tassos
+    title: "POSYDON: A General-Purpose Population Synthesis Code Based on Detailed Binary-Evolution Simulations"
+    year: 2023
+    journal: The Astrophysical Journal Supplement Series
+    volume: 264
+    pages: 45
+    doi: 10.3847/1538-4365/ac90c1

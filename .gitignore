@@ -1,3 +1,6 @@
 /__pycache__/*
 /examples/__pycache__/*
 /.ipynb_checkpoints/*
+data/
+*.h5
+*.tar.gz

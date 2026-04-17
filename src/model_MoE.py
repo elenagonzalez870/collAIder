@@ -23,7 +23,7 @@ class EncounterRegimeClassifier:
         Output: list, in the format [radius1, radius 2] in units of solar radii
         """
         
-        filename = "/home/egp8636/b1095/POSYDON_data_v2_grids_0.01Zsun.tar.gz/POSYDON_data/single_HMS/1e-02_Zsun.h5"
+        filename = "../data/POSYDON_data_v2_grids_0.01Zsun.tar.gz/POSYDON_data/single_HMS/1e-02_Zsun.h5"
         
         with h5py.File(filename, "r") as f:
             grid = f['grid']
@@ -50,7 +50,7 @@ class EncounterRegimeClassifier:
                 ages = run['history1']['star_age'][:]
                 logR = run['history1']['log_R'][:]
                 h1 = run['history1']['center_h1'][:]
-                
+
                 # First: check if the star is past the TAMS 
                 age_match = np.argsort(np.abs(ages - target_age))[0]
                 central_h1s.append(run['history1']['center_h1'][age_match]) # Central hydrogen fraction at given time, if below 10^(-5) then star is past the TAMS
@@ -61,6 +61,7 @@ class EncounterRegimeClassifier:
                 r_interp = np.interp(target_age, ages, radii)
                 interp_radii.append(r_interp)
                 interp_masses.append(masses[i])
+        
 
                 # Find first index where central H drops below threshold
                 tams_idx = np.where(h1 < 1e-5)[0]
@@ -73,7 +74,6 @@ class EncounterRegimeClassifier:
 
                 tams_ages.append(tams_age)
 
-            
             # Now interpolate in masses:
             # Sort by increasing mass to avoid np.interp confusion
             if interp_masses[1] < interp_masses[0]:
@@ -81,15 +81,14 @@ class EncounterRegimeClassifier:
                 interp_radii[0] , interp_radii[1]  = interp_radii[1] , interp_radii[0]
 
             radii_predictions = np.interp(target_mass, interp_masses, interp_radii)
-            
 
             if central_h1s[0] < 10**(-5):
                 # Use the earliest TAMS age among the matched tracks
                 tams_ages = [a for a in tams_ages if a is not None]
                 earliest_tams = min(tams_ages)
-                tolerance = np.abs(target_age - earliest_tams)/earliest_tams  # 10 % relative tolerance
-                if tolerance > 0.10:
-                    raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}) and approx TAMS age {earliest_tams/10**(9)}, we can't compute the collision.")
+                tolerance = 0.5*10**6 # 0.5 Myr tolerance
+                if target_age >= earliest_tams + tolerance:
+                    raise ValueError(f" Star of mass {target_mass} and age {target_age/10**(9)} Gyr is past the TAMS with a central_h1 fraction of (~{np.mean(central_h1s)}), we can't compute the collision.")
 
         return radii_predictions
 
@@ -253,7 +252,7 @@ class EncounterRegimeClassifier:
 class PerformCollision(nn.Module):
 
     _models_loaded = False 
-    _classification_model = None
+    _model = None
     _regression_model = None
     _input_mean = None
     _input_std = None
@@ -262,38 +261,27 @@ class PerformCollision(nn.Module):
         super(PerformCollision, self).__init__() 
 
         if not PerformCollision._models_loaded:
-            PerformCollision._classification_model = ClassificationNeuralNetwork()
-            PerformCollision._regression_model = RegressionNeuralNetwork()
-
-            BASE_DIR = Path(__file__).resolve().parent
+            PerformCollision._model = TaskSpecificMoE()
 
             # Load the saved checkpoint for the classification model
-            classification_checkpoint = torch.load(
-                BASE_DIR / "src/best_NN_class_model.pt",  # replace with your file path
+            MoE_checkpoint = torch.load(
+                "../models/MoE_best_model.pt",  # replace with your file path
                 map_location=torch.device("cpu"), # load on CPU for demonstration
                 weights_only=False)  
 
-            regression_checkpoint = torch.load(
-                BASE_DIR / "src/best_NN_reg_model.pt",
-                map_location=torch.device("cpu"), 
-                weights_only=False)
-
             # Load normalization statistics
-            PerformCollision._input_mean  = classification_checkpoint["train_mean"]
-            PerformCollision._input_std  = classification_checkpoint["train_std"]
+            PerformCollision._input_mean  = MoE_checkpoint["train_mean"]
+            PerformCollision._input_std  = MoE_checkpoint["train_std"]
 
             # Load model weights**
-            PerformCollision._classification_model.load_state_dict(classification_checkpoint["model_state_dict"])
-            PerformCollision._regression_model.load_state_dict(regression_checkpoint["model_state_dict"])
+            PerformCollision._model.load_state_dict(MoE_checkpoint["model_state_dict"])
 
             # Set models to evaluation mode**
-            PerformCollision._classification_model.eval()
-            PerformCollision._regression_model.eval()
+            PerformCollision._model.eval()
             
-            PerformCollision._models_loaded = True
+            PerformCollision.models_loaded = True
 
-        self.classification_model = PerformCollision._classification_model
-        self.regression_model = PerformCollision._regression_model
+        self.model = PerformCollision._model
         self.input_mean = PerformCollision._input_mean
         self.input_std = PerformCollision._input_std
 
@@ -318,19 +306,16 @@ class PerformCollision(nn.Module):
         X_norm = torch.tensor(X_norm, dtype=torch.float32).unsqueeze(0)
         return X_norm
 
-    def PerformClassification(self):
+    def PerformClassification_and_Regression(self):
         with torch.no_grad():
-            classification_pred = self.classification_model(self.X_norm)
+            classification_pred, regression_pred = self.model(self.X_norm)
             predicted_class = torch.argmax(classification_pred, dim=1).item()
-        return predicted_class
 
-    def PerformRegression(self):
-        with torch.no_grad():
-            regression_pred  = self.regression_model(self.X_norm)
             predicted_values = regression_pred.squeeze(0).tolist()  # Converts tensor to a list
             predicted_values = [val * self.m_ini_tot for val in predicted_values] 
             predicted_values = [float(val) for val in predicted_values]
-        return predicted_values
+
+        return predicted_class, predicted_values
 
 def process_collisions(pred_class, pred_reg): 
     """
@@ -339,7 +324,7 @@ def process_collisions(pred_class, pred_reg):
 
     if pred_class == 0:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[0] + pred_reg[1] #re-assign masses for mass conservation 
-        pred_reg[0], pred_reg[1] = 0.0, 0.0
+        pred_reg[0], pred_reg[1] = 0.0
     if pred_class == 1 or pred_class == 3:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[1] #re-assign masses for mass conservation 
         pred_reg[1] = 0.0
@@ -399,10 +384,10 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
             pericenter=pericenter, velocity_inf=velocity_inf)
 
         if regime == 'collision':
+
             regime_flag = -1
             collision = PerformCollision(age, pericenter, velocity_inf, mass1, mass2) 
-            predicted_class = collision.PerformClassification()
-            predicted_values = collision.PerformRegression() 
+            predicted_class, predicted_values = collision.PerformClassification_and_Regression()
 
             # Pre-process the outputs before returning to user to enforce consistency between classification and regression predictions
             predicted_class, predicted_values = process_collisions(predicted_class, predicted_values)
@@ -429,53 +414,73 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
     
     return results
 
-
-
-class RegressionNeuralNetwork(nn.Module):
-    def __init__(self):
+class Expert(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
         super().__init__()
-        self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.ReLU(),
+        )
+    
+    def forward(self, x):
+        return self.linear_relu_stack(x)
+
+class TaskSpecificMoE(nn.Module):
+    """Separate MoE for classification and regression tasks"""
+    def __init__(self, num_experts=4):
+        super().__init__()
+        self.num_experts = num_experts
+        self.flatten = nn.Flatten()
+        
+        # Shared backbone
+        self.shared_backbone = nn.Sequential(
             nn.Linear(5, 512),
             nn.LayerNorm(512),
             nn.ReLU(),
             nn.Linear(512, 256),
             nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.LayerNorm(128),
-            nn.ReLU(),
-            nn.Linear(128, 3),
         )
+        
+        # Classification head
+        self.class_moe = Expert(input_dim=256, hidden_dim=128,)
+        self.class_head = nn.Linear(128, 4)
+        
+        # Regression experts
+        self.reg_experts = nn.ModuleList([Expert(input_dim=256, hidden_dim=128) for _ in range(num_experts)])
+
+        # Regression heads - one per expert
+        self.reg_heads = nn.ModuleList([nn.Linear(128, 3) for _ in range(num_experts)])
 
     def forward(self, x):
         x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        fractions = F.softmax(logits, dim=-1)  # Convert to probabilities
-        return fractions
+        shared_features = self.shared_backbone(x)
+        
+        # Classification 
+        class_features = self.class_moe(shared_features)
+        class_out = self.class_head(class_features)
+        
+        # Compute gate from classification logits
+        expert_indices = torch.argmax(class_out, dim=-1) 
 
-class ClassificationNeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(5, 512),
-            nn.LayerNorm(512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.LayerNorm(256),
-            nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.LayerNorm(128),
-            nn.ReLU(),
-            nn.Linear(128, 4)
-        )
+        # Regression - only compute output from selected expert
+        batch_size = shared_features.shape[0]
+        reg_out = torch.zeros(batch_size, self.reg_heads[0].out_features, device=shared_features.device, dtype=shared_features.dtype)
+    
+        # Process each expert's samples
+        for expert_idx in range(self.num_experts):
+            # Find which samples use this expert
+            mask = (expert_indices == expert_idx)
+            if mask.any():
+                # Only process samples assigned to this expert
+                expert_features = self.reg_experts[expert_idx](shared_features[mask])
+                expert_out = self.reg_heads[expert_idx](expert_features)
+                reg_out[mask] = expert_out
 
-    def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        reg_out_fractions = F.softmax(reg_out, dim=-1)
 
+        return class_out, reg_out_fractions
 
 if __name__ == "__main__":
     # Run example
