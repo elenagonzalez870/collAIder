@@ -1,6 +1,6 @@
-# collAIder
-
-![collAIder logo](docs/collAIder_logo.png)
+<p align="center">
+  <img src="docs/collAIder_logo.png" alt="collAIder logo" width="400"/>
+</p>
 
 A machine learning-based tool for predicting the outcomes of stellar encounters using neural networks trained on Smoothed Particle Hydrodynamics (SPH) simulation data. collAIder classifies encounters into physical regimes (collision, tidal capture, and flyby) and predicts post-encounter stellar masses.
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19601411.svg)](https://doi.org/10.5281/zenodo.19601411 )
@@ -82,7 +82,7 @@ Install dependencies with:
 pip install torch numpy h5py
 ```
 
-The POSYDON v2 stellar evolution grids must also be available. See the [POSYDON documentation](https://posydon.org/) for installation instructions.
+The POSYDON v2 stellar evolution grids must also be available. See the [POSYDON documentation](https://posydon.org/) for installation instructions. They can also be downloaded from the Zenodo page [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19601411.svg)](https://doi.org/10.5281/zenodo.19601411 )
 
 ---
 
