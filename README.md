@@ -76,6 +76,13 @@ numpy
 h5py
 ```
 
+### Get the code
+
+````bash
+git clone https://github.com/elenagonzalez870/collAIder.git
+cd collAIder
+````
+
 Install dependencies with:
 
 ```bash
@@ -84,26 +91,54 @@ pip install torch numpy h5py
 
 The POSYDON v2 stellar evolution grids must also be available. See the [POSYDON documentation](https://posydon.org/) for installation instructions. They can also be downloaded from the Zenodo page [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19601411.svg)](https://doi.org/10.5281/zenodo.19601411 )
 
+Once downloaded, place the `.h5` file at the following path within the repository: data/POSYDON_data_v2_grids_0.01Zsun.tar.gz/POSYDON_data/single_HMS/1e-02_Zsun.h5
+
 ---
+
+## Setting COLLAIDER_PATH
+
+The Quick Start script locates collAIder via the `COLLAIDER_PATH` environment variable. If you install to the default location (`/usr/local/share/collAIder`), no further action is needed.
+
+If you install elsewhere, set `COLLAIDER_PATH` to your installation directory:
+
+```bash
+export COLLAIDER_PATH=/path/to/your/collAIder
+```
+
+To make this permanent, add the line to your shell startup file:
+
+- **bash:** add to `~/.bashrc`
+- **zsh:** add to `~/.zshrc`
+
+Then reload your shell:
+
+```bash
+source ~/.bashrc   # or ~/.zshrc
+```
 
 ## Quick Start
 
 ```python
-from src.collider import collAIder  # adjust import path as needed
+import sys, os
+
+# Set COLLAIDER_PATH to your collAIder installation directory
+COLLAIDER_PATH = os.environ.get('COLLAIDER_PATH', '/usr/local/share/collAIder')
+sys.path.insert(0, os.path.join(COLLAIDER_PATH, 'src'))
+os.chdir(os.path.join(COLLAIDER_PATH, 'src'))
+
+# from model_MoE import process_encounters  # alternative model
+from model_NN import process_encounters
 
 # Define encounter parameters
-results = collAIder(
-    mass1    = [1.0],   # Primary mass [M_sun]
-    mass2    = [0.8],   # Secondary mass [M_sun]
-    age1     = [2.0],   # Primary age [Gyr]
-    age2     = [2.0],   # Secondary age [Gyr]
-    pericenter = [0.5], # Pericenter distance [R_sun]
-    v_inf    = [10.0],  # Relative velocity at infinity [km/s]
+results = process_encounters(
+    ages           = [2.0],   # Age [Gyr]
+    masses1        = [1.0],   # Primary mass [M_sun]
+    masses2        = [0.8],   # Secondary mass [M_sun]
+    pericenters    = [0.5],   # Pericenter distance [R_sun]
+    velocities_inf = [10.0],  # Relative velocity at infinity [km/s]
 )
 
 print(results)
-# {'regime_flag': -1, 'predicted_class': 1,
-#  'predicted_values': [1.2, 0.5, 0.1]}
 ```
 
 For a full demonstration, see [examples/Tutorial.ipynb](examples/Tutorial.ipynb).
@@ -127,7 +162,7 @@ collAIder classifies each stellar encounter into one of three physical regimes:
 Each result is a Python dictionary with the following keys:
 
 - **`regime_flag`** — Integer code for the encounter type (`-1`, `-2`, or `-3`; see above).
-- **`predicted_class`** — Classification label within the collision regime (0–3 for collisions; 1 for tidal capture; 2 for flyby).
+- **`predicted_class`** — Classification label: 0 = both stars destroyed; 1 = merger; 2 = two stars remain; 3 = one stripped star remains.
 - **`predicted_values`** — List of `[star_mass1, star_mass2, unbound_mass]` in M☉.
 
 ---
