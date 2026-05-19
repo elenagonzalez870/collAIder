@@ -76,23 +76,33 @@ numpy
 h5py
 ```
 
-### Get the code
-
-````bash
-git clone https://github.com/elenagonzalez870/collAIder.git
-cd collAIder
-````
-
 Install dependencies with:
 
 ```bash
 pip install torch numpy h5py
 ```
 
+### Get the code
+
+```bash
+git clone https://github.com/elenagonzalez870/collAIder.git
+```
+
+For a system-wide installation accessible to all users, clone directly to the default location:
+
+```bash
+sudo git clone https://github.com/elenagonzalez870/collAIder.git /usr/local/share/collAIder
+```
+
+If you install to a custom location, set the `COLLAIDER_PATH` environment variable (see [Setting COLLAIDER_PATH](#setting-collaider_path) below).
+
+
 The POSYDON v2 stellar evolution grids must also be available. See the [POSYDON documentation](https://posydon.org/) for installation instructions. They can also be downloaded from the Zenodo page [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19601411.svg)](https://doi.org/10.5281/zenodo.19601411 )
 
-Once downloaded, place the `.h5` file at the following path within the repository: data/POSYDON_data_v2_grids_0.01Zsun.tar.gz/POSYDON_data/single_HMS/1e-02_Zsun.h5
-
+Once downloaded, place the `.h5` file at the following path within the repository:
+```
+data/POSYDON_data_v2_grids_0.01Zsun.tar.gz/POSYDON_data/single_HMS/1e-02_Zsun.h5
+```
 ---
 
 ## Setting COLLAIDER_PATH
