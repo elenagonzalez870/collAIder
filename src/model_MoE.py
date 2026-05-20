@@ -206,7 +206,7 @@ class EncounterRegimeClassifier:
         if eta1 > 10.:
             E_1 = 0.
 
-        if eta1 > 10.:
+        if eta2 > 10.:
             E_2 = 0.
 
         E_tidal = E_1 + E_2 # Msun * km^2/ s^2
@@ -279,7 +279,7 @@ class PerformCollision(nn.Module):
             # Set models to evaluation mode**
             PerformCollision._model.eval()
             
-            PerformCollision.models_loaded = True
+            PerformCollision._models_loaded = True
 
         self.model = PerformCollision._model
         self.input_mean = PerformCollision._input_mean
@@ -324,7 +324,7 @@ def process_collisions(pred_class, pred_reg):
 
     if pred_class == 0:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[0] + pred_reg[1] #re-assign masses for mass conservation 
-        pred_reg[0], pred_reg[1] = 0.0
+        pred_reg[0], pred_reg[1] = 0.0, 0.0
     if pred_class == 1 or pred_class == 3:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[1] #re-assign masses for mass conservation 
         pred_reg[1] = 0.0
