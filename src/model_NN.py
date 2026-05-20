@@ -207,7 +207,7 @@ class EncounterRegimeClassifier:
         if eta1 > 10.:
             E_1 = 0.
 
-        if eta1 > 10.:
+        if eta2 > 10.:
             E_2 = 0.
 
         E_tidal = E_1 + E_2 # Msun * km^2/ s^2
