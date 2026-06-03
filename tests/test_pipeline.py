@@ -36,10 +36,14 @@ def backends():
 @pytest.mark.parametrize("backend,scn", CASES, ids=CASE_IDS)
 def test_output_structure(backends, backend, scn):
     res = run_scenario(backends[backend], scn)
-    assert set(res) == {"regime_flag", "predicted_class", "predicted_values"}
+    assert set(res) == {"regime_flag", "predicted_class", "predicted_values", "class_probs"}
     assert res["regime_flag"] == REGIME_FLAG[scn["regime"]]
     assert res["predicted_class"] in (0, 1, 2, 3)
     assert len(res["predicted_values"]) == 3
+    cp = res["class_probs"]
+    assert len(cp) == 4
+    assert all(p >= 0.0 for p in cp)
+    assert sum(cp) == pytest.approx(1.0, abs=1e-5)
 
 
 @pytest.mark.parametrize("backend,scn", CASES, ids=CASE_IDS)
@@ -49,6 +53,7 @@ def test_matches_golden(backends, backend, scn):
     assert res["regime_flag"] == exp["regime_flag"]
     assert res["predicted_class"] == exp["predicted_class"]  # exact: strongest desync signal
     np.testing.assert_allclose(res["predicted_values"], exp["predicted_values"], rtol=RTOL, atol=ATOL)
+    np.testing.assert_allclose(res["class_probs"], exp["class_probs"], rtol=RTOL, atol=ATOL)
 
 
 def test_scenarios_cover_all_regimes():
@@ -57,12 +62,12 @@ def test_scenarios_cover_all_regimes():
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
-def test_tidal_and_flyby_outcomes_are_hardcoded(backends, backend):
+def test_tidal_and_flyby_are_one_hot(backends, backend):
     mod = backends[backend]
     tidal = run_scenario(mod, next(s for s in SCENARIOS if s["regime"] == "tidal_capture"))
     flyby = run_scenario(mod, next(s for s in SCENARIOS if s["regime"] == "flyby"))
-    assert tidal["predicted_class"] == 1
-    assert flyby["predicted_class"] == 2
+    assert tidal["predicted_class"] == 1 and tidal["class_probs"] == [0.0, 1.0, 0.0, 0.0]
+    assert flyby["predicted_class"] == 2 and flyby["class_probs"] == [0.0, 0.0, 1.0, 0.0]
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
@@ -74,6 +79,7 @@ def test_mass_ordering_symmetry(backends, backend):
     rb = run_scenario(mod, next(s for s in SCENARIOS if s["name"] == "collision_lowmass"))
     rs = run_scenario(mod, next(s for s in SCENARIOS if s["name"] == "collision_lowmass_swapped"))
     assert rs["predicted_class"] == rb["predicted_class"]
+    np.testing.assert_allclose(rs["class_probs"], rb["class_probs"], rtol=RTOL, atol=ATOL)
     if rb["predicted_class"] == 1:
         expected = rb["predicted_values"]
     else:

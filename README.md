@@ -185,6 +185,7 @@ Each result is a Python dictionary with the following keys:
 - **`regime_flag`** — Integer code for the encounter type (`-1`, `-2`, or `-3`; see above).
 - **`predicted_class`** — Classification label: 0 = both stars destroyed; 1 = merger; 2 = two stars remain; 3 = one stripped star remains.
 - **`predicted_values`** — List of `[star_mass1, star_mass2, unbound_mass]` in M☉.
+- **`class_probs`** — List of the four classification probabilities (softmax over the classes above; sums to 1). Tidal captures and flybys return a one-hot vector, since their outcome is set by the physics-based classifier rather than the neural network.
 
 ---
 
