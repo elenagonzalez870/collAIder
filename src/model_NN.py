@@ -76,8 +76,9 @@ class PerformCollision(nn.Module):
     def PerformClassification(self):
         with torch.no_grad():
             classification_pred = self.classification_model(self.X_norm)
-            predicted_class = torch.argmax(classification_pred, dim=1).item()
-        return predicted_class
+            class_probs = F.softmax(classification_pred, dim=1).squeeze(0).tolist()
+            predicted_class = int(np.argmax(class_probs))
+        return predicted_class, class_probs
 
     def PerformRegression(self):
         with torch.no_grad():
@@ -118,7 +119,8 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
     Returns:
     --------
     results : list of dicts
-        Each dict contains 'regime_flag', 'predicted_class' and 'predicted_values'
+        Each dict contains 'regime_flag', 'predicted_class', 'predicted_values'
+        and 'class_probs'
     """
 
     # Convert to arrays
@@ -155,24 +157,26 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
 
         if regime == 'collision':
             regime_flag = -1
-            collision = PerformCollision(age, pericenter, velocity_inf, mass1, mass2) 
-            predicted_class = collision.PerformClassification()
-            predicted_values = collision.PerformRegression() 
+            collision = PerformCollision(age, pericenter, velocity_inf, mass1, mass2)
+            predicted_class, class_probs = collision.PerformClassification()
+            predicted_values = collision.PerformRegression()
 
             # Pre-process the outputs before returning to user to enforce consistency between classification and regression predictions
             predicted_class, predicted_values = process_collisions(predicted_class, predicted_values)
 
         elif regime == 'tidal_capture':
             regime_flag = -2
-            # Assume a merger with no mass loss 
-            predicted_class = 1 
+            # Assume a merger with no mass loss
+            predicted_class = 1
             predicted_values = [1.*(mass1 + mass2), 0., 0.]
+            class_probs = [0., 1., 0., 0.]
 
         else: #flyby
             regime_flag = -3
             # Stars fly by each other with no mass loss
             predicted_class = 2
             predicted_values = [mass1, mass2, 0]
+            class_probs = [0., 0., 1., 0.]
 
         if flag == True and int(predicted_class) != 1:
             predicted_values[0], predicted_values[1] = predicted_values[1], predicted_values[0]
@@ -180,7 +184,8 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
         results.append({
         'regime_flag': regime_flag,
         'predicted_class': int(predicted_class),
-        'predicted_values': [float(v) for v in predicted_values]})
+        'predicted_values': [float(v) for v in predicted_values],
+        'class_probs': [float(p) for p in class_probs]})
     
     return results
 

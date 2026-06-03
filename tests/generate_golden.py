@@ -32,7 +32,8 @@ def main():
             res = run_scenario(mod, scn)
             golden[backend][scn["name"]] = res
             print(f"{backend:10} {scn['name']:24} flag={res['regime_flag']:>2} "
-                  f"class={res['predicted_class']}")
+                  f"class={res['predicted_class']} "
+                  f"probs={[round(p, 4) for p in res['class_probs']]}")
 
     out = REPO_ROOT / "tests" / "golden_outputs.json"
     out.write_text(json.dumps(golden, indent=2, sort_keys=True) + "\n")
