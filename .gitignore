@@ -7,4 +7,5 @@ venv/
 data/
 *.h5
 *.tar.gz
+scripts/figures/
 .DS_Store
