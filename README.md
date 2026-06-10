@@ -66,6 +66,7 @@ collAIder/
     ├── data_v1.csv        # Output from SPH collisions
     ├── data_splits_v1.npz # Data standard scaled and split into train/val/test datasets
     └── POSYDON*.          # Posydon v2 stellar models
+├── scripts/               # Analysis and plotting scripts
 ├── tests/                 # Characterization test suite (run with pytest)
 └── examples/
     ├── Tutorial.ipynb         # End-to-end workflow tutorial
