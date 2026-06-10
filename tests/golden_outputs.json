@@ -1,0 +1,132 @@
+{
+  "model_MoE": {
+    "collision_lowmass": {
+      "predicted_class": 1,
+      "predicted_values": [
+        1.7661986947059631,
+        0.0,
+        0.03380139761334107
+      ],
+      "regime_flag": -1
+    },
+    "collision_lowmass_swapped": {
+      "predicted_class": 1,
+      "predicted_values": [
+        1.7661986947059631,
+        0.0,
+        0.03380139761334107
+      ],
+      "regime_flag": -1
+    },
+    "collision_massive_equal": {
+      "predicted_class": 1,
+      "predicted_values": [
+        61.88238525390625,
+        0.0,
+        2.117612243101121
+      ],
+      "regime_flag": -1
+    },
+    "collision_massive_unequal": {
+      "predicted_class": 1,
+      "predicted_values": [
+        40.75553476810455,
+        0.0,
+        1.244464154423575
+      ],
+      "regime_flag": -1
+    },
+    "flyby": {
+      "predicted_class": 2,
+      "predicted_values": [
+        1.0,
+        0.8,
+        0.0
+      ],
+      "regime_flag": -3
+    },
+    "flyby_swapped": {
+      "predicted_class": 2,
+      "predicted_values": [
+        0.8,
+        1.0,
+        0.0
+      ],
+      "regime_flag": -3
+    },
+    "tidal_capture": {
+      "predicted_class": 1,
+      "predicted_values": [
+        1.8,
+        0.0,
+        0.0
+      ],
+      "regime_flag": -2
+    }
+  },
+  "model_NN": {
+    "collision_lowmass": {
+      "predicted_class": 1,
+      "predicted_values": [
+        1.7673148155212404,
+        0.0,
+        0.03268514759838581
+      ],
+      "regime_flag": -1
+    },
+    "collision_lowmass_swapped": {
+      "predicted_class": 1,
+      "predicted_values": [
+        1.7673148155212404,
+        0.0,
+        0.03268514759838581
+      ],
+      "regime_flag": -1
+    },
+    "collision_massive_equal": {
+      "predicted_class": 1,
+      "predicted_values": [
+        61.88740921020508,
+        0.0,
+        2.112588405609131
+      ],
+      "regime_flag": -1
+    },
+    "collision_massive_unequal": {
+      "predicted_class": 1,
+      "predicted_values": [
+        40.8762184381485,
+        0.0,
+        1.1237787455320358
+      ],
+      "regime_flag": -1
+    },
+    "flyby": {
+      "predicted_class": 2,
+      "predicted_values": [
+        1.0,
+        0.8,
+        0.0
+      ],
+      "regime_flag": -3
+    },
+    "flyby_swapped": {
+      "predicted_class": 2,
+      "predicted_values": [
+        0.8,
+        1.0,
+        0.0
+      ],
+      "regime_flag": -3
+    },
+    "tidal_capture": {
+      "predicted_class": 1,
+      "predicted_values": [
+        1.8,
+        0.0,
+        0.0
+      ],
+      "regime_flag": -2
+    }
+  }
+}
