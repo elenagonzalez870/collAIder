@@ -11,10 +11,13 @@ class EncounterRegimeClassifier:
     def StellarRadiusEstimator(self, target_age, target_mass):
 
         """
-        Function to interpolate stellar radii from Posydin v2 MESA tracks
+        Interpolate a stellar radius from the POSYDON v2 MESA tracks.
 
-        Input: np.array, in the format [[age1, mass1], [age2, mass2], ...] where age is in Gyr and mass in solar masses
-        Output: list, in the format [radius1, radius 2] in units of solar radii
+        Input: target_age in Gyr, target_mass in solar masses
+        Output: radius in solar radii
+
+        Raises ValueError if the star is past the TAMS (central hydrogen
+        fraction below 1e-5) by more than a 10% relative age tolerance.
         """
 
         filename = "../data/POSYDON_data_v2_grids_0.01Zsun.tar.gz/POSYDON_data/single_HMS/1e-02_Zsun.h5"
@@ -58,7 +61,6 @@ class EncounterRegimeClassifier:
 
                 # Find first index where central H drops below threshold
                 tams_idx = np.where(h1 < 1e-5)[0]
-                tams_age = ages[tams_idx[0]]
 
                 if len(tams_idx) > 0:
                     tams_age = ages[tams_idx[0]]   # first time star is past TAMS
@@ -135,7 +137,7 @@ class EncounterRegimeClassifier:
 
     def tidal_energy_loss(self, M1, M2, R1, R2, rp, vinf):
 
-        G = 1.90682 * 10**(5)  # km^2 Rsun MSun^-1 s^-2
+        G = self.G  # km^2 Rsun MSun^-1 s^-2
 
         # Reduced mass
         mu = M1 * M2 / (M1 + M2)  # Msun

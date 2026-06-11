@@ -21,20 +21,20 @@ class PerformCollision(nn.Module):
         if not PerformCollision._models_loaded:
             PerformCollision._model = TaskSpecificMoE()
 
-            # Load the saved checkpoint for the classification model
+            # Load the saved checkpoint
             MoE_checkpoint = torch.load(
-                "../models/MoE_best_model.pt",  # replace with your file path
-                map_location=torch.device("cpu"), # load on CPU for demonstration
-                weights_only=False)  
+                "../models/MoE_best_model.pt",
+                map_location=torch.device("cpu"),
+                weights_only=False)
 
             # Load normalization statistics
             PerformCollision._input_mean  = MoE_checkpoint["train_mean"]
             PerformCollision._input_std  = MoE_checkpoint["train_std"]
 
-            # Load model weights**
+            # Load model weights
             PerformCollision._model.load_state_dict(MoE_checkpoint["model_state_dict"])
 
-            # Set models to evaluation mode**
+            # Set model to evaluation mode
             PerformCollision._model.eval()
             
             PerformCollision._models_loaded = True
@@ -83,8 +83,8 @@ def process_collisions(pred_class, pred_reg):
     if pred_class == 0:  #if both stars are destroyed 
         pred_reg[2] += pred_reg[0] + pred_reg[1] #re-assign masses for mass conservation 
         pred_reg[0], pred_reg[1] = 0.0, 0.0
-    if pred_class == 1 or pred_class == 3:  #if both stars are destroyed 
-        pred_reg[2] += pred_reg[1] #re-assign masses for mass conservation 
+    if pred_class == 1 or pred_class == 3:  #if only one star survives (merger or stripped)
+        pred_reg[2] += pred_reg[1] #re-assign masses for mass conservation
         pred_reg[1] = 0.0
     return pred_class, pred_reg
 
@@ -106,7 +106,7 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
     Returns:
     --------
     results : list of dicts
-        Each dict contains 'regime_flag', 'predicted_class', 'predicted_values'
+        Each dict contains 'regime_flag', 'predicted_class' and 'predicted_values'
     """
 
     # Convert to arrays
@@ -116,7 +116,7 @@ def process_encounters(ages, masses1, masses2, pericenters, velocities_inf):
     pericenters = np.atleast_1d(pericenters)
     velocities_inf = np.atleast_1d(velocities_inf)
     
-    # Check all inputs have same length**
+    # Check all inputs have same length
     n = len(ages)
     if not all(len(arr) == n for arr in [masses1, masses2, pericenters, velocities_inf]):
         raise ValueError("All input arrays must have the same length")

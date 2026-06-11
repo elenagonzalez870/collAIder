@@ -32,7 +32,7 @@ BACKENDS = ("model_NN", "model_MoE")
 
 # Golden comparison tolerance. Inference runs in eval mode (deterministic), so
 # this is ~exact on the capture machine; the slack only absorbs cross-platform
-# float32 noise. Goldens are captured in the linux/arm64 devcontainer.
+# float32 noise.
 RTOL, ATOL = 1e-5, 1e-6
 
 
