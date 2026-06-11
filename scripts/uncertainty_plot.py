@@ -1,21 +1,23 @@
 """
-6-panel (r_p/(R1+R2), v_inf) heatmap of collAIder's NN predictions.
+6-panel (r_p/(R1+R2), v_inf) heatmap of collAIder's deterministic predictions.
 
 Top row     : outcome classification, M_{1,final}, M_{2,final}.
 Bottom row  : classification uncertainty, M_1 uncertainty, M_2 uncertainty.
 
 The top row and the classification-uncertainty panel query the deterministic
-NN directly across the full grid (bypassing the regime classifier), following
-the approach of Paper_plots_classification.ipynb. The two mass-uncertainty
-panels sample the Bayesian backend (model_Bayesian) N_MC times per grid point
-and show the 1-sigma spread of each final mass. R1 and R2 come from
-collAIder's StellarRadiusEstimator (POSYDON); the deterministic NN uses them
-only to normalize the x-axis, while the Bayesian model also consumes
-r_p/(R1+R2) directly as an input feature.
+model (NN or MoE, chosen at the prompt) directly across the full grid
+(bypassing the regime classifier), following the approach of
+Paper_plots_classification.ipynb. The two mass-uncertainty panels sample the
+Bayesian backend (model_Bayesian) N_MC times per grid point and show the
+1-sigma spread of each final mass. R1 and R2 come from collAIder's
+StellarRadiusEstimator (POSYDON); the deterministic model uses them only to
+normalize the x-axis, while the Bayesian model also consumes r_p/(R1+R2)
+directly as an input feature.
 
 Usage (from the collAIder repo root):
     python scripts/uncertainty_plot.py
-Press Enter at each prompt to accept the default (M1=32, M2=32, age=0.001 Gyr).
+Press Enter at each prompt to accept the default (MoE, M1=32, M2=32,
+age=0.001 Gyr).
 """
 
 import os
@@ -32,7 +34,9 @@ SRC = os.path.normpath(os.path.join(HERE, "..", "src"))
 sys.path.insert(0, SRC)
 os.chdir(SRC)
 
-from model_NN import PerformCollision, EncounterRegimeClassifier  # noqa: E402
+from encounter_physics import EncounterRegimeClassifier  # noqa: E402
+import model_NN  # noqa: E402
+import model_MoE  # noqa: E402
 import model_Bayesian  # noqa: E402
 
 
@@ -51,17 +55,38 @@ def ask(prompt, default):
     return float(s) if s else float(default)
 
 
-def load_nn_models():
-    PerformCollision(age=0.001, pericenter=1.0, velocity_inf=10.0, mass1=1.0, mass2=1.0)
+def ask_backend():
+    while True:
+        s = input("Deterministic model, NN or MoE [MoE]: ").strip().lower()
+        if not s or s == "moe":
+            return "MoE"
+        if s == "nn":
+            return "NN"
+        print("Please enter NN or MoE.")
+
+
+def load_model(backend):
+    """Return (predict, mean, std) where predict maps normalized inputs to
+    (class_logits, regression_fractions). NN and MoE share the same input
+    transform and normalization scheme; they differ only in whether one model
+    or two produce the outputs."""
+    module = model_MoE if backend == "MoE" else model_NN
+    module.PerformCollision(age=0.001, pericenter=1.0, velocity_inf=10.0,
+                            mass1=1.0, mass2=1.0)
+    if backend == "MoE":
+        predict = module.PerformCollision._model
+    else:
+        class_model = module.PerformCollision._classification_model
+        reg_model = module.PerformCollision._regression_model
+        predict = lambda X: (class_model(X), reg_model(X))  # noqa: E731
     return (
-        PerformCollision._classification_model,
-        PerformCollision._regression_model,
-        PerformCollision._input_mean,
-        PerformCollision._input_std,
+        predict,
+        module.PerformCollision._input_mean,
+        module.PerformCollision._input_std,
     )
 
 
-def run_grid(age, m1, m2, n):
+def run_grid(backend, age, m1, m2, n):
     classifier = EncounterRegimeClassifier()
     r1 = float(classifier.StellarRadiusEstimator(age, m1))
     r2 = float(classifier.StellarRadiusEstimator(age, m2))
@@ -77,7 +102,7 @@ def run_grid(age, m1, m2, n):
     vinfs = VINF.ravel().astype(np.float32)
     n_cells = rps.size
 
-    class_model, reg_model, mean, std = load_nn_models()
+    predict, mean, std = load_model(backend)
     mean = np.asarray(mean, dtype=np.float32)
     std = np.asarray(std, dtype=np.float32)
 
@@ -90,11 +115,11 @@ def run_grid(age, m1, m2, n):
     ], axis=1)
     X_norm = torch.tensor((X_phys - mean) / std, dtype=torch.float32)
 
-    print(f"Running NN on {n_cells} grid points...")
+    print(f"Running {backend} on {n_cells} grid points...")
     with torch.no_grad():
-        class_logits = class_model(X_norm)
+        class_logits, reg_softmax = predict(X_norm)
         class_probs = torch.softmax(class_logits, dim=1).numpy()
-        reg_softmax = reg_model(X_norm).numpy()
+        reg_softmax = reg_softmax.numpy()
     print("Done.")
 
     pred_class = class_probs.argmax(axis=1)
@@ -195,7 +220,8 @@ def make_figure(m1, m2, age, rp_frac, vinf, pred_class, M1, M2, class_probs,
 
     class_cmap = mcolors.ListedColormap(CLASS_COLORS)
     class_norm = mcolors.BoundaryNorm(boundaries=[-0.5, 0.5, 1.5, 2.5, 3.5], ncolors=4)
-    vmax_mass = float(m1 + m2)
+    M1_masked = np.ma.masked_equal(M1, 0.0)
+    M2_masked = np.ma.masked_equal(M2, 0.0)
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
 
@@ -205,18 +231,19 @@ def make_figure(m1, m2, age, rp_frac, vinf, pred_class, M1, M2, class_probs,
     cb.set_ticklabels(CLASS_NAMES)
     axes[0, 0].set_title('Outcome classification', fontsize=16)
 
-    im = axes[0, 1].pcolormesh(rp_frac, log_v, M1,
-                                cmap='coolwarm', vmin=0, vmax=vmax_mass, shading='auto')
+    im = axes[0, 1].pcolormesh(rp_frac, log_v, M1_masked,
+                                cmap='coolwarm', vmin=0, vmax=float(M1.max()), shading='auto')
     fig.colorbar(im, ax=axes[0, 1], label=r'$M_\odot$')
     axes[0, 1].set_title(r'$M_{1,\rm final}$', fontsize=16)
 
-    im = axes[0, 2].pcolormesh(rp_frac, log_v, M2,
-                                cmap='coolwarm', vmin=0, vmax=vmax_mass, shading='auto')
+    im = axes[0, 2].pcolormesh(rp_frac, log_v, M2_masked,
+                                cmap='coolwarm', vmin=0, vmax=float(M2.max()), shading='auto')
     fig.colorbar(im, ax=axes[0, 2], label=r'$M_\odot$')
     axes[0, 2].set_title(r'$M_{2,\rm final}$', fontsize=16)
 
     im = axes[1, 0].pcolormesh(rp_frac, log_v, class_uncert,
-                                cmap='magma', vmin=0, vmax=1, shading='auto')
+                                cmap='magma', vmin=0, vmax=float(class_uncert.max()),
+                                shading='auto')
     fig.colorbar(im, ax=axes[1, 0])
     axes[1, 0].set_title('Classification uncertainty', fontsize=16)
 
@@ -250,6 +277,7 @@ def main():
     print("collAIder star collision plots")
     print("Enter values for star masses and stellar age")
     print("=" * 50)
+    backend = ask_backend()
     m1 = ask("Mass of star 1 (Msun)", 32.0)
     m2 = ask("Mass of star 2 (Msun)", 32.0)
     age = ask("Stellar age (Gyr)", 0.001)
@@ -257,7 +285,7 @@ def main():
     m1_run = max(m1, m2)
     m2_run = min(m1, m2)
 
-    rp_frac, vinf, pred_class, M1, M2, class_probs = run_grid(age, m1_run, m2_run, GRID_SIZE)
+    rp_frac, vinf, pred_class, M1, M2, class_probs = run_grid(backend, age, m1_run, m2_run, GRID_SIZE)
     M1_std, M2_std = run_bayesian_std_grid(age, m1_run, m2_run, GRID_SIZE)
 
     if m1 < m2:
@@ -267,9 +295,9 @@ def main():
     fig = make_figure(m1, m2, age, rp_frac, vinf, pred_class, M1, M2, class_probs,
                       M1_std, M2_std)
 
-    fig_dir = os.path.join(HERE, "figures")
+    fig_dir = os.path.join(HERE, "figures", backend)
     os.makedirs(fig_dir, exist_ok=True)
-    out = os.path.join(fig_dir, f"uncertainty_plot_M1{m1}_M2{m2}_age{age}.png")
+    out = os.path.join(fig_dir, f"{backend}_uncertainty_plot_M1={m1}_M2={m2}_age={age}.png")
     fig.savefig(out, dpi=200, bbox_inches='tight')
     print(f"Saved figure: {out}")
     plt.show()
