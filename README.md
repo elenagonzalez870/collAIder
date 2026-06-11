@@ -48,6 +48,7 @@ collAIder/
 ├── CITATION.cff           # Machine-readable citation metadata
 ├── LICENSE                # Software license
 ├── src                    # Source Files
+    ├── encounter_physics.py   # Physics-based regime classifier (shared by both models)
     ├── model_MoE.py           # Mixture of Experts Architecture
     ├── model_NN.py            # Neural Network Architecture
 ├── models/                # Trained Models
@@ -56,6 +57,7 @@ collAIder/
     ├── data_v1.csv        # Output from SPH collisions
     ├── data_splits_v1.npz # Data standard scaled and split into train/val/test datasets
     └── POSYDON*.          # Posydon v2 stellar models
+├── tests/                 # Characterization test suite (run with pytest)
 └── examples/
     ├── Tutorial.ipynb         # End-to-end workflow tutorial
     ├── NN_tutorial.ipynb      # Neural network standalone tutorial
@@ -152,6 +154,15 @@ print(results)
 ```
 
 For a full demonstration, see [examples/Tutorial.ipynb](examples/Tutorial.ipynb).
+
+## Running the Tests
+
+The repository ships with a characterization test suite that pins the behavior of both model backends. From the repository root:
+
+```bash
+pip install pytest
+pytest
+```
 
 ---
 
