@@ -29,6 +29,15 @@ In BibTeX:
 ```
 ---
 
+## Changes Since Publication
+
+The code has evolved since the version described in the paper:
+
+1. Moved the code repeated between `model_NN.py` and `model_MoE.py` into a shared module, `src/encounter_physics.py`.
+2. Added a Python test suite (`tests/`; see [Running the Tests](#running-the-tests)).
+
+---
+
 ## Description
 
 collAIder predicts the outcome of stellar encounters using a two-component machine learning pipeline:
