@@ -13,10 +13,12 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC = REPO_ROOT / "src"
+TESTS = REPO_ROOT / "tests"
 
-# Make src/ importable at collection time (before test modules are imported).
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+# Make src/ (and tests/) importable at collection time (before test modules are imported).
+for p in (SRC, TESTS):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 
 @pytest.fixture(scope="session", autouse=True)
