@@ -123,7 +123,9 @@ class EncounterRegimeClassifier:
         collision_criterion = r_peri < (R1 + R2)
 
         # Tidal capture criterion
+        E_tidal = self.tidal_energy_loss(mass1, mass2, R1, R2, r_peri, v_inf) # Msun * km^2/ s^2
         E_orb = 0.5 * (mass1 * mass2 / (mass1 + mass2)) * v_inf**2 # Msun (km/s)^2
+        E_final = E_orb - E_tidal
 
         tidal_capture_criterion = E_final <= 0
 
